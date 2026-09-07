@@ -1,0 +1,12 @@
+const assert = require('node:assert/strict');
+const {toLab,palette} = require('../onboarding/colors.js');
+const close=(a,b)=>a.forEach((v,i)=>assert.ok(Math.abs(v-b[i])<1e-6));
+close(toLab([0,0,0]),[0,0,0]);
+close(toLab([255,255,255]),[1,0,0]);
+close(toLab([255,0,0]),[0.6279553606,0.2248630611,0.1258462985]);
+assert.deepEqual(palette([0,0,0,0]),[]);
+const solid=palette([180,80,100,255,180,80,100,255]);
+assert.equal(solid.length,1);assert.equal(solid[0].hex,'#b45064');
+const mixed=palette([180,80,100,255,180,80,100,255,30,40,90,255,255,255,255,255]);
+assert.equal(mixed.length,3);assert.equal(mixed[0].hex,'#b45064');
+console.log('Color conversion and palette extraction checks passed.');
