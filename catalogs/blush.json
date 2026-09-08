@@ -1,0 +1,314 @@
+[
+  {
+    "id": "loreal_lumi_liquid_dewy_peach",
+    "product_name": "Lumi Le Liquid Blush",
+    "shade_name": "Dewy Peach",
+    "category": "blush",
+    "color": {
+      "L": 0.68,
+      "a": 0.32,
+      "b": 0.28
+    },
+    "color_source": "estimated"
+  },
+  {
+    "id": "loreal_lumi_liquid_glowy_berry",
+    "product_name": "Lumi Le Liquid Blush",
+    "shade_name": "Glowy Berry",
+    "category": "blush",
+    "color": {
+      "L": 0.45,
+      "a": 0.38,
+      "b": 0.08
+    },
+    "color_source": "estimated"
+  },
+  {
+    "id": "loreal_lumi_liquid_dewy_pink",
+    "product_name": "Lumi Le Liquid Blush",
+    "shade_name": "Dewy Pink",
+    "category": "blush",
+    "color": {
+      "L": 0.62,
+      "a": 0.38,
+      "b": 0.02
+    },
+    "color_source": "estimated"
+  },
+  {
+    "id": "loreal_lumi_liquid_dewy_bright_pink",
+    "product_name": "Lumi Le Liquid Blush",
+    "shade_name": "Dewy Bright Pink",
+    "category": "blush",
+    "color": {
+      "L": 0.61,
+      "a": 0.38,
+      "b": -0.02
+    },
+    "color_source": "estimated"
+  },
+  {
+    "id": "loreal_lumi_liquid_dewy_rich_coral",
+    "product_name": "Lumi Le Liquid Blush",
+    "shade_name": "Dewy Rich Coral",
+    "category": "blush",
+    "color": {
+      "L": 0.58,
+      "a": 0.36,
+      "b": 0.22
+    },
+    "color_source": "estimated"
+  },
+  {
+    "id": "loreal_lumi_liquid_glowy_gold_pink",
+    "product_name": "Lumi Le Liquid Blush",
+    "shade_name": "Glowy Gold Pink",
+    "category": "blush",
+    "color": {
+      "L": 0.65,
+      "a": 0.34,
+      "b": 0.12
+    },
+    "color_source": "estimated"
+  },
+  {
+    "id": "loreal_lumi_liquid_true_rose",
+    "product_name": "Lumi Le Liquid Blush",
+    "shade_name": "True Rose",
+    "category": "blush",
+    "color": {
+      "L": 0.57,
+      "a": 0.36,
+      "b": 0.1
+    },
+    "color_source": "estimated"
+  },
+  {
+    "id": "loreal_lumi_liquid_rouge_paris",
+    "product_name": "Lumi Le Liquid Blush",
+    "shade_name": "Rouge Paris",
+    "category": "blush",
+    "color": {
+      "L": 0.42,
+      "a": 0.38,
+      "b": 0.18
+    },
+    "color_source": "estimated"
+  },
+  {
+    "id": "loreal_lumi_liquid_cool_berry",
+    "product_name": "Lumi Le Liquid Blush",
+    "shade_name": "Cool Berry",
+    "category": "blush",
+    "color": {
+      "L": 0.4,
+      "a": 0.39,
+      "b": -0.05
+    },
+    "color_source": "estimated"
+  },
+  {
+    "id": "loreal_infallible_soft_matte_fearless_coral",
+    "product_name": "Infallible Up to 24H Fresh Wear Soft Matte Blush",
+    "shade_name": "Fearless Coral",
+    "category": "blush",
+    "color": {
+      "L": 0.6,
+      "a": 0.35,
+      "b": 0.22
+    },
+    "color_source": "estimated"
+  },
+  {
+    "id": "loreal_infallible_soft_matte_confident_pink",
+    "product_name": "Infallible Up to 24H Fresh Wear Soft Matte Blush",
+    "shade_name": "Confident Pink",
+    "category": "blush",
+    "color": {
+      "L": 0.58,
+      "a": 0.39,
+      "b": 0.04
+    },
+    "color_source": "estimated"
+  },
+  {
+    "id": "loreal_infallible_soft_matte_daring_rosewood",
+    "product_name": "Infallible Up to 24H Fresh Wear Soft Matte Blush",
+    "shade_name": "Daring Rosewood",
+    "category": "blush",
+    "color": {
+      "L": 0.51,
+      "a": 0.27,
+      "b": 0.14
+    },
+    "color_source": "estimated"
+  },
+  {
+    "id": "loreal_infallible_soft_matte_legendary_berry",
+    "product_name": "Infallible Up to 24H Fresh Wear Soft Matte Blush",
+    "shade_name": "Legendary Berry",
+    "category": "blush",
+    "color": {
+      "L": 0.38,
+      "a": 0.38,
+      "b": 0.01
+    },
+    "color_source": "estimated"
+  },
+  {
+    "id": "loreal_true_match_baby_blossom",
+    "product_name": "True Match Super-Blendable Blush",
+    "shade_name": "Baby Blossom (C1-2)",
+    "category": "blush",
+    "color": {
+      "L": 0.73,
+      "a": 0.26,
+      "b": 0.01
+    },
+    "color_source": "estimated"
+  },
+  {
+    "id": "loreal_true_match_tender_rose",
+    "product_name": "True Match Super-Blendable Blush",
+    "shade_name": "Tender Rose (C3-4)",
+    "category": "blush",
+    "color": {
+      "L": 0.64,
+      "a": 0.29,
+      "b": 0.06
+    },
+    "color_source": "estimated"
+  },
+  {
+    "id": "loreal_true_match_rosy_outlook",
+    "product_name": "True Match Super-Blendable Blush",
+    "shade_name": "Rosy Outlook (C5-6)",
+    "category": "blush",
+    "color": {
+      "L": 0.55,
+      "a": 0.33,
+      "b": 0.08
+    },
+    "color_source": "estimated"
+  },
+  {
+    "id": "loreal_true_match_spiced_plum",
+    "product_name": "True Match Super-Blendable Blush",
+    "shade_name": "Spiced Plum (C7-8)",
+    "category": "blush",
+    "color": {
+      "L": 0.41,
+      "a": 0.31,
+      "b": 0.03
+    },
+    "color_source": "estimated"
+  },
+  {
+    "id": "loreal_true_match_innocent_flush",
+    "product_name": "True Match Super-Blendable Blush",
+    "shade_name": "Innocent Flush (N3-4)",
+    "category": "blush",
+    "color": {
+      "L": 0.68,
+      "a": 0.24,
+      "b": 0.11
+    },
+    "color_source": "estimated"
+  },
+  {
+    "id": "loreal_true_match_apricot_kiss",
+    "product_name": "True Match Super-Blendable Blush",
+    "shade_name": "Apricot Kiss (N5-6)",
+    "category": "blush",
+    "color": {
+      "L": 0.71,
+      "a": 0.22,
+      "b": 0.24
+    },
+    "color_source": "estimated"
+  },
+  {
+    "id": "loreal_true_match_sweet_ginger",
+    "product_name": "True Match Super-Blendable Blush",
+    "shade_name": "Sweet Ginger (N7-8)",
+    "category": "blush",
+    "color": {
+      "L": 0.48,
+      "a": 0.25,
+      "b": 0.21
+    },
+    "color_source": "estimated"
+  },
+  {
+    "id": "loreal_true_match_bare_honey",
+    "product_name": "True Match Super-Blendable Blush",
+    "shade_name": "Bare Honey (W1-2)",
+    "category": "blush",
+    "color": {
+      "L": 0.75,
+      "a": 0.18,
+      "b": 0.2
+    },
+    "color_source": "estimated"
+  },
+  {
+    "id": "loreal_true_match_barely_blushing",
+    "product_name": "True Match Super-Blendable Blush",
+    "shade_name": "Barely Blushing (W3-4)",
+    "category": "blush",
+    "color": {
+      "L": 0.66,
+      "a": 0.23,
+      "b": 0.18
+    },
+    "color_source": "estimated"
+  },
+  {
+    "id": "loreal_true_match_subtle_sable",
+    "product_name": "True Match Super-Blendable Blush",
+    "shade_name": "Subtle Sable (W5-6)",
+    "category": "blush",
+    "color": {
+      "L": 0.52,
+      "a": 0.21,
+      "b": 0.17
+    },
+    "color_source": "estimated"
+  },
+  {
+    "id": "loreal_age_perfect_amber",
+    "product_name": "Age Perfect Radiant Satin Blush",
+    "shade_name": "Amber",
+    "category": "blush",
+    "color": {
+      "L": 0.63,
+      "a": 0.24,
+      "b": 0.22
+    },
+    "color_source": "estimated"
+  },
+  {
+    "id": "loreal_age_perfect_mauved",
+    "product_name": "Age Perfect Radiant Satin Blush",
+    "shade_name": "Mauved",
+    "category": "blush",
+    "color": {
+      "L": 0.54,
+      "a": 0.28,
+      "b": 0.07
+    },
+    "color_source": "estimated"
+  },
+  {
+    "id": "loreal_paradise_melon_dollar_baby",
+    "product_name": "Paradise Blush",
+    "shade_name": "03 Melon Dollar Baby",
+    "category": "blush",
+    "color": {
+      "L": 0.69,
+      "a": 0.28,
+      "b": 0.15
+    },
+    "color_source": "estimated"
+  }
+]

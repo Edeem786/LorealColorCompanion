@@ -21,7 +21,7 @@ On this machine Python is from MSYS2, so the virtual environment uses `bin` inst
 
 Open http://127.0.0.1:8000. Stop with Ctrl+C. Flask's local development server is used, with debugging off.
 
-1. Upload your personal reference set (up to six images at once or added incrementally). Select each lip region by dragging or using its keyboard crop sliders. Extract up to three shades per photo and uncheck shades you do not want to use. One **Use these shades & continue** action saves all checked shades as likes. No per-shade Like/Dislike loop is required; unchecked shades are ignored, not disliked.
+1. Choose a makeup category, then upload your personal reference set (up to six images at once or added incrementally). Select the matching makeup region by dragging or using its keyboard crop sliders. Extract up to three shades per photo and uncheck shades you do not want to use. One **Use these shades & continue** action saves all checked shades as likes. No per-shade Like/Dislike loop is required; unchecked shades are ignored, not disliked.
 2. Answer **Would you like to add an aesthetic reference?** Choose No for personal-only suggestions, or Yes to name an influence and upload a second set. Confirm that set in the same way. It represents your estimate of an audience's taste or a chosen aesthetic, not verified feedback from others.
 3. Choose your balance. With a confirmed second set the slider starts at 60% personal / 40% aesthetic and allows 0–100% in five-point steps. Without a second set it is locked to 100% personal. Click **Suggest my shades**; change the slider and click again to compare results. Back buttons retain this session's reference sets without resaving completed events.
 
@@ -49,7 +49,11 @@ result = model.rank_weighted(
 
 `result` contains ranked `results`, the effective weights and rating counts. Each candidate contains its score, both evidence explanations, and a shared-match flag. `/api/rank` accepts `mode: "weighted"`, `personal_weight` (0–1), and optional `environment_profile_id`. The older `personal` and `shared` modes remain available for callers; `rank_shared` still implements the earlier minimum-score intersection heuristic.
 
-The browser builds at most 50 unique candidates from selected reference colors and lighter/darker variations and displays the top 12. These are illustrative shades, not L'Oréal products. Later, supply actual available product colors as `candidates` to the same ranker; product availability belongs in catalog filtering before ranking. The model still evaluates individual lip colors, not complete-look compatibility. CVD stays separate.
+The site now recommends products from `catalogs/<category>.json`, showing the top 12 with product names, shade names and estimated previews. The supplied 26-item blush list is in `catalogs/blush.json`; `catalogs/lip.json` contains the supplied 52 lipsticks (source category `lipstick` mapped to `lip`). Add more files using the format in [catalogs/README.md](catalogs/README.md), then refresh the browser. Empty categories are disabled. Switching category clears the current reference session; saved ratings remain separated by category.
+
+`GET /api/catalogs` lists available categories and counts. `POST /api/recommend` accepts the usual user/profile weights plus `category`; it loads candidates on the server and ignores any client-supplied candidates. The existing `/api/rank` remains available for testing arbitrary colors. Both support up to 1,000 candidates. `/api/rating` now accepts `category` (legacy default `lip`). The site explicitly supplies its selected category, and the CVD adapter receives that category too.
+
+Catalog colors are treated as normalized OKLab and retained exactly as supplied. Their source is estimated, not independently measured. CSS OKLab swatches are approximate and may clip colors outside the display gamut. Catalog inclusion is not live availability verification. Unknown/distant evidence remains unknown, rather than inventing a confident recommendation. The model still evaluates individual colors, not complete-look compatibility. CVD stays separate.
 
 ## Profiles and local operation
 

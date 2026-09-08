@@ -1,0 +1,626 @@
+[
+  {
+    "id": "loreal_colour_riche_satin_fairest_nude",
+    "product_name": "Colour Riche Satin Lipstick",
+    "shade_name": "Fairest Nude (800)",
+    "category": "lip",
+    "color": {
+      "L": 0.65,
+      "a": 0.22,
+      "b": 0.14
+    },
+    "source_category": "lipstick"
+  },
+  {
+    "id": "loreal_colour_riche_satin_natures_blush",
+    "product_name": "Colour Riche Satin Lipstick",
+    "shade_name": "Nature's Blush (840)",
+    "category": "lip",
+    "color": {
+      "L": 0.58,
+      "a": 0.28,
+      "b": 0.16
+    },
+    "source_category": "lipstick"
+  },
+  {
+    "id": "loreal_colour_riche_satin_cinnamon_toast",
+    "product_name": "Colour Riche Satin Lipstick",
+    "shade_name": "Cinnamon Toast (839)",
+    "category": "lip",
+    "color": {
+      "L": 0.48,
+      "a": 0.3,
+      "b": 0.22
+    },
+    "source_category": "lipstick"
+  },
+  {
+    "id": "loreal_colour_riche_satin_saucy_mauve",
+    "product_name": "Colour Riche Satin Lipstick",
+    "shade_name": "Saucy Mauve (560)",
+    "category": "lip",
+    "color": {
+      "L": 0.56,
+      "a": 0.31,
+      "b": 0.08
+    },
+    "source_category": "lipstick"
+  },
+  {
+    "id": "loreal_colour_riche_satin_ballerina_shoes",
+    "product_name": "Colour Riche Satin Lipstick",
+    "shade_name": "Ballerina Shoes (135)",
+    "category": "lip",
+    "color": {
+      "L": 0.72,
+      "a": 0.25,
+      "b": 0.04
+    },
+    "source_category": "lipstick"
+  },
+  {
+    "id": "loreal_colour_riche_satin_le_rouge_paris",
+    "product_name": "Colour Riche Satin Lipstick",
+    "shade_name": "Le Rouge Paris (300)",
+    "category": "lip",
+    "color": {
+      "L": 0.42,
+      "a": 0.56,
+      "b": 0.32
+    },
+    "source_category": "lipstick"
+  },
+  {
+    "id": "loreal_colour_riche_satin_worth_it",
+    "product_name": "Colour Riche Satin Lipstick",
+    "shade_name": "Worth It (601)",
+    "category": "lip",
+    "color": {
+      "L": 0.62,
+      "a": 0.26,
+      "b": 0.15
+    },
+    "source_category": "lipstick"
+  },
+  {
+    "id": "loreal_colour_riche_satin_worth_it_medium",
+    "product_name": "Colour Riche Satin Lipstick",
+    "shade_name": "Worth It Medium (635)",
+    "category": "lip",
+    "color": {
+      "L": 0.53,
+      "a": 0.29,
+      "b": 0.17
+    },
+    "source_category": "lipstick"
+  },
+  {
+    "id": "loreal_colour_riche_satin_ruby_flame",
+    "product_name": "Colour Riche Satin Lipstick",
+    "shade_name": "Ruby Flame (317)",
+    "category": "lip",
+    "color": {
+      "L": 0.4,
+      "a": 0.58,
+      "b": 0.35
+    },
+    "source_category": "lipstick"
+  },
+  {
+    "id": "loreal_colour_riche_satin_plum_explosion",
+    "product_name": "Colour Riche Satin Lipstick",
+    "shade_name": "Plum Explosion (766)",
+    "category": "lip",
+    "color": {
+      "L": 0.32,
+      "a": 0.38,
+      "b": 0.05
+    },
+    "source_category": "lipstick"
+  },
+  {
+    "id": "loreal_colour_riche_satin_mica",
+    "product_name": "Colour Riche Satin Lipstick",
+    "shade_name": "Mica (620)",
+    "category": "lip",
+    "color": {
+      "L": 0.61,
+      "a": 0.33,
+      "b": 0.1
+    },
+    "source_category": "lipstick"
+  },
+  {
+    "id": "loreal_colour_riche_satin_tickled_pink",
+    "product_name": "Colour Riche Satin Lipstick",
+    "shade_name": "Tickled Pink (165)",
+    "category": "lip",
+    "color": {
+      "L": 0.68,
+      "a": 0.34,
+      "b": 0.03
+    },
+    "source_category": "lipstick"
+  },
+  {
+    "id": "loreal_colour_riche_satin_pink_flamingo",
+    "product_name": "Colour Riche Satin Lipstick",
+    "shade_name": "Pink Flamingo (180)",
+    "category": "lip",
+    "color": {
+      "L": 0.64,
+      "a": 0.42,
+      "b": -0.01
+    },
+    "source_category": "lipstick"
+  },
+  {
+    "id": "loreal_colour_riche_satin_british_red",
+    "product_name": "Colour Riche Satin Lipstick",
+    "shade_name": "British Red (350)",
+    "category": "lip",
+    "color": {
+      "L": 0.44,
+      "a": 0.54,
+      "b": 0.3
+    },
+    "source_category": "lipstick"
+  },
+  {
+    "id": "loreal_colour_riche_satin_tropical_coral",
+    "product_name": "Colour Riche Satin Lipstick",
+    "shade_name": "Tropical Coral (444)",
+    "category": "lip",
+    "color": {
+      "L": 0.59,
+      "a": 0.45,
+      "b": 0.28
+    },
+    "source_category": "lipstick"
+  },
+  {
+    "id": "loreal_colour_riche_satin_classic_wine",
+    "product_name": "Colour Riche Satin Lipstick",
+    "shade_name": "Classic Wine (752)",
+    "category": "lip",
+    "color": {
+      "L": 0.35,
+      "a": 0.4,
+      "b": 0.12
+    },
+    "source_category": "lipstick"
+  },
+  {
+    "id": "loreal_colour_riche_satin_spiced_cider",
+    "product_name": "Colour Riche Satin Lipstick",
+    "shade_name": "Spiced Cider (755)",
+    "category": "lip",
+    "color": {
+      "L": 0.49,
+      "a": 0.32,
+      "b": 0.2
+    },
+    "source_category": "lipstick"
+  },
+  {
+    "id": "loreal_colour_riche_satin_divine_wine",
+    "product_name": "Colour Riche Satin Lipstick",
+    "shade_name": "Divine Wine (762)",
+    "category": "lip",
+    "color": {
+      "L": 0.31,
+      "a": 0.36,
+      "b": 0.08
+    },
+    "source_category": "lipstick"
+  },
+  {
+    "id": "loreal_colour_riche_satin_bronzine",
+    "product_name": "Colour Riche Satin Lipstick",
+    "shade_name": "Bronzine (825)",
+    "category": "lip",
+    "color": {
+      "L": 0.5,
+      "a": 0.23,
+      "b": 0.21
+    },
+    "source_category": "lipstick"
+  },
+  {
+    "id": "loreal_colour_riche_satin_toasted_almond",
+    "product_name": "Colour Riche Satin Lipstick",
+    "shade_name": "Toasted Almond (843)",
+    "category": "lip",
+    "color": {
+      "L": 0.54,
+      "a": 0.24,
+      "b": 0.18
+    },
+    "source_category": "lipstick"
+  },
+  {
+    "id": "loreal_colour_riche_satin_raisin_rapture",
+    "product_name": "Colour Riche Satin Lipstick",
+    "shade_name": "Raisin Rapture (892)",
+    "category": "lip",
+    "color": {
+      "L": 0.38,
+      "a": 0.32,
+      "b": 0.11
+    },
+    "source_category": "lipstick"
+  },
+  {
+    "id": "loreal_colour_riche_intense_volume_matte_nu_confident",
+    "product_name": "Colour Riche Intense Volume Matte Lipstick",
+    "shade_name": "Le Nu Confident (100)",
+    "category": "lip",
+    "color": {
+      "L": 0.63,
+      "a": 0.25,
+      "b": 0.15
+    },
+    "source_category": "lipstick"
+  },
+  {
+    "id": "loreal_colour_riche_intense_volume_matte_rosy_confident",
+    "product_name": "Colour Riche Intense Volume Matte Lipstick",
+    "shade_name": "Rosy Confident (200)",
+    "category": "lip",
+    "color": {
+      "L": 0.6,
+      "a": 0.32,
+      "b": 0.1
+    },
+    "source_category": "lipstick"
+  },
+  {
+    "id": "loreal_colour_riche_intense_volume_matte_rouge_avant_garde",
+    "product_name": "Colour Riche Intense Volume Matte Lipstick",
+    "shade_name": "Le Rouge Avant-Garde (300)",
+    "category": "lip",
+    "color": {
+      "L": 0.41,
+      "a": 0.57,
+      "b": 0.31
+    },
+    "source_category": "lipstick"
+  },
+  {
+    "id": "loreal_colour_riche_intense_volume_matte_fuchsia_boheme",
+    "product_name": "Colour Riche Intense Volume Matte Lipstick",
+    "shade_name": "Fuchsia Bohème (400)",
+    "category": "lip",
+    "color": {
+      "L": 0.5,
+      "a": 0.51,
+      "b": -0.05
+    },
+    "source_category": "lipstick"
+  },
+  {
+    "id": "loreal_colour_riche_intense_volume_matte_coral_irreverent",
+    "product_name": "Colour Riche Intense Volume Matte Lipstick",
+    "shade_name": "Coral Irrévérent (500)",
+    "category": "lip",
+    "color": {
+      "L": 0.58,
+      "a": 0.44,
+      "b": 0.26
+    },
+    "source_category": "lipstick"
+  },
+  {
+    "id": "loreal_colour_riche_intense_volume_matte_wood_nonchalant",
+    "product_name": "Colour Riche Intense Volume Matte Lipstick",
+    "shade_name": "Le Wood Nonchalant (600)",
+    "category": "lip",
+    "color": {
+      "L": 0.46,
+      "a": 0.28,
+      "b": 0.18
+    },
+    "source_category": "lipstick"
+  },
+  {
+    "id": "loreal_infallible_matte_resistance_fairytale_ending",
+    "product_name": "Infallible Matte Resistance Liquid Lipstick",
+    "shade_name": "Fairytale Ending (100)",
+    "category": "lip",
+    "color": {
+      "L": 0.71,
+      "a": 0.19,
+      "b": 0.12
+    },
+    "source_category": "lipstick"
+  },
+  {
+    "id": "loreal_infallible_matte_resistance_breakfast_in_bed",
+    "product_name": "Infallible Matte Resistance Liquid Lipstick",
+    "shade_name": "Breakfast in Bed (105)",
+    "category": "lip",
+    "color": {
+      "L": 0.65,
+      "a": 0.23,
+      "b": 0.14
+    },
+    "source_category": "lipstick"
+  },
+  {
+    "id": "loreal_infallible_matte_resistance_snooze_your_alarm",
+    "product_name": "Infallible Matte Resistance Liquid Lipstick",
+    "shade_name": "Snooze Your Alarm (115)",
+    "category": "lip",
+    "color": {
+      "L": 0.57,
+      "a": 0.27,
+      "b": 0.11
+    },
+    "source_category": "lipstick"
+  },
+  {
+    "id": "loreal_infallible_matte_resistance_major_crush",
+    "product_name": "Infallible Matte Resistance Liquid Lipstick",
+    "shade_name": "Major Crush (120)",
+    "category": "lip",
+    "color": {
+      "L": 0.52,
+      "a": 0.33,
+      "b": 0.13
+    },
+    "source_category": "lipstick"
+  },
+  {
+    "id": "loreal_infallible_matte_resistance_lipstick_and_chill",
+    "product_name": "Infallible Matte Resistance Liquid Lipstick",
+    "shade_name": "Lipstick & Chill (200)",
+    "category": "lip",
+    "color": {
+      "L": 0.47,
+      "a": 0.39,
+      "b": 0.06
+    },
+    "source_category": "lipstick"
+  },
+  {
+    "id": "loreal_infallible_matte_resistance_tropical_vacay",
+    "product_name": "Infallible Matte Resistance Liquid Lipstick",
+    "shade_name": "Tropical Vacay (210)",
+    "category": "lip",
+    "color": {
+      "L": 0.56,
+      "a": 0.45,
+      "b": 0.28
+    },
+    "source_category": "lipstick"
+  },
+  {
+    "id": "loreal_infallible_matte_resistance_shopping_spree",
+    "product_name": "Infallible Matte Resistance Liquid Lipstick",
+    "shade_name": "Shopping Spree (230)",
+    "category": "lip",
+    "color": {
+      "L": 0.53,
+      "a": 0.46,
+      "b": 0.02
+    },
+    "source_category": "lipstick"
+  },
+  {
+    "id": "loreal_infallible_matte_resistance_road_tripping",
+    "product_name": "Infallible Matte Resistance Liquid Lipstick",
+    "shade_name": "Road Tripping (240)",
+    "category": "lip",
+    "color": {
+      "L": 0.45,
+      "a": 0.35,
+      "b": 0.21
+    },
+    "source_category": "lipstick"
+  },
+  {
+    "id": "loreal_infallible_matte_resistance_french_kiss",
+    "product_name": "Infallible Matte Resistance Liquid Lipstick",
+    "shade_name": "French Kiss (245)",
+    "category": "lip",
+    "color": {
+      "L": 0.49,
+      "a": 0.48,
+      "b": 0.18
+    },
+    "source_category": "lipstick"
+  },
+  {
+    "id": "loreal_infallible_matte_resistance_le_rouge_paris",
+    "product_name": "Infallible Matte Resistance Liquid Lipstick",
+    "shade_name": "Le Rouge Paris (420)",
+    "category": "lip",
+    "color": {
+      "L": 0.39,
+      "a": 0.59,
+      "b": 0.34
+    },
+    "source_category": "lipstick"
+  },
+  {
+    "id": "loreal_infallible_matte_resistance_wine_not",
+    "product_name": "Infallible Matte Resistance Liquid Lipstick",
+    "shade_name": "Wine Not (500)",
+    "category": "lip",
+    "color": {
+      "L": 0.3,
+      "a": 0.41,
+      "b": 0.08
+    },
+    "source_category": "lipstick"
+  },
+  {
+    "id": "loreal_infallible_matte_resistance_first_kiss",
+    "product_name": "Infallible Matte Resistance Liquid Lipstick",
+    "shade_name": "First Kiss (600)",
+    "category": "lip",
+    "color": {
+      "L": 0.68,
+      "a": 0.21,
+      "b": 0.1
+    },
+    "source_category": "lipstick"
+  },
+  {
+    "id": "loreal_infallible_matte_resistance_worth_it",
+    "product_name": "Infallible Matte Resistance Liquid Lipstick",
+    "shade_name": "Worth It (601)",
+    "category": "lip",
+    "color": {
+      "L": 0.61,
+      "a": 0.27,
+      "b": 0.16
+    },
+    "source_category": "lipstick"
+  },
+  {
+    "id": "loreal_infallible_matte_resistance_summer_fling",
+    "product_name": "Infallible Matte Resistance Liquid Lipstick",
+    "shade_name": "Summer Fling (625)",
+    "category": "lip",
+    "color": {
+      "L": 0.64,
+      "a": 0.37,
+      "b": 0.23
+    },
+    "source_category": "lipstick"
+  },
+  {
+    "id": "loreal_infallible_matte_resistance_rose_heat",
+    "product_name": "Infallible Matte Resistance Liquid Lipstick",
+    "shade_name": "Rosé Heat (630)",
+    "category": "lip",
+    "color": {
+      "L": 0.58,
+      "a": 0.36,
+      "b": 0.09
+    },
+    "source_category": "lipstick"
+  },
+  {
+    "id": "loreal_infallible_matte_resistance_worth_it_medium",
+    "product_name": "Infallible Matte Resistance Liquid Lipstick",
+    "shade_name": "Worth It Medium (635)",
+    "category": "lip",
+    "color": {
+      "L": 0.52,
+      "a": 0.28,
+      "b": 0.18
+    },
+    "source_category": "lipstick"
+  },
+  {
+    "id": "loreal_infallible_matte_resistance_crush_alert",
+    "product_name": "Infallible Matte Resistance Liquid Lipstick",
+    "shade_name": "Crush Alert (645)",
+    "category": "lip",
+    "color": {
+      "L": 0.48,
+      "a": 0.44,
+      "b": 0.15
+    },
+    "source_category": "lipstick"
+  },
+  {
+    "id": "loreal_infallible_matte_resistance_wedding_night",
+    "product_name": "Infallible Matte Resistance Liquid Lipstick",
+    "shade_name": "Wedding Night (650)",
+    "category": "lip",
+    "color": {
+      "L": 0.43,
+      "a": 0.32,
+      "b": 0.12
+    },
+    "source_category": "lipstick"
+  },
+  {
+    "id": "loreal_infallible_matte_resistance_proposal",
+    "product_name": "Infallible Matte Resistance Liquid Lipstick",
+    "shade_name": "Proposal (655)",
+    "category": "lip",
+    "color": {
+      "L": 0.6,
+      "a": 0.3,
+      "b": 0.07
+    },
+    "source_category": "lipstick"
+  },
+  {
+    "id": "loreal_infallible_matte_resistance_first_love",
+    "product_name": "Infallible Matte Resistance Liquid Lipstick",
+    "shade_name": "First Love (660)",
+    "category": "lip",
+    "color": {
+      "L": 0.66,
+      "a": 0.24,
+      "b": 0.08
+    },
+    "source_category": "lipstick"
+  },
+  {
+    "id": "loreal_infallible_matte_resistance_first_move",
+    "product_name": "Infallible Matte Resistance Liquid Lipstick",
+    "shade_name": "First Move (665)",
+    "category": "lip",
+    "color": {
+      "L": 0.55,
+      "a": 0.29,
+      "b": 0.13
+    },
+    "source_category": "lipstick"
+  },
+  {
+    "id": "loreal_infallible_2step_everlasting_paris",
+    "product_name": "Infallible 2-Step Longwear Lipstick",
+    "shade_name": "Everlasting Paris (101)",
+    "category": "lip",
+    "color": {
+      "L": 0.44,
+      "a": 0.52,
+      "b": 0.27
+    },
+    "source_category": "lipstick"
+  },
+  {
+    "id": "loreal_infallible_2step_incessant_rose",
+    "product_name": "Infallible 2-Step Longwear Lipstick",
+    "shade_name": "Incessant Rose (102)",
+    "category": "lip",
+    "color": {
+      "L": 0.61,
+      "a": 0.33,
+      "b": 0.06
+    },
+    "source_category": "lipstick"
+  },
+  {
+    "id": "loreal_infallible_2step_reliable_raspberry",
+    "product_name": "Infallible 2-Step Longwear Lipstick",
+    "shade_name": "Reliable Raspberry (201)",
+    "category": "lip",
+    "color": {
+      "L": 0.43,
+      "a": 0.48,
+      "b": 0.01
+    },
+    "source_category": "lipstick"
+  },
+  {
+    "id": "loreal_infallible_2step_flawless_fuchsia",
+    "product_name": "Infallible 2-Step Longwear Lipstick",
+    "shade_name": "Flawless Fuchsia (202)",
+    "category": "lip",
+    "color": {
+      "L": 0.48,
+      "a": 0.54,
+      "b": -0.06
+    },
+    "source_category": "lipstick"
+  }
+]

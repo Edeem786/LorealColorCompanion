@@ -5,13 +5,14 @@ from pathlib import Path
 from flask import Flask, abort, jsonify, request, send_from_directory
 from werkzeug.exceptions import HTTPException
 
+from .catalog import CATALOG_DIR, load_catalog, list_catalogs
 from .actions import DATABASE, dispatch  # Retained for existing Python callers.
 from .integrations import AccessibilityAssessment, MakeupRegion
 
 ROOT = Path(__file__).resolve().parent
 
 
-def create_app(database=DATABASE, *, detect_region=None, assess_accessibility=None):
+def create_app(database=DATABASE, *, catalog_directory=CATALOG_DIR, detect_region=None, assess_accessibility=None):
     """Two optional function arguments are the only integration wiring needed."""
     app = Flask(__name__, static_folder=None)
     app.config["MAX_CONTENT_LENGTH"] = 11 * 1024 * 1024
@@ -49,15 +50,25 @@ def create_app(database=DATABASE, *, detect_region=None, assess_accessibility=No
     def rating():
         return jsonify(dispatch("/api/rating", request.get_json(), database))
 
+    @app.get("/api/catalogs")
+    def catalogs():
+        return {"catalogs": list_catalogs(catalog_directory)}
+
+    @app.post("/api/recommend")
     @app.post("/api/rank")
     def rank():
         payload = request.get_json()
+        if request.path == "/api/recommend":
+            if not isinstance(payload, dict):
+                raise ValueError("Expected an object.")
+            payload = {**payload, "candidates": load_catalog(payload.get("category", "blush"), catalog_directory)}
+            payload.setdefault("category", "blush")
         result = dispatch("/api/rank", payload, database)
         for candidate in result["results"]:
             candidate["accessibility"] = None
             if assess_accessibility is not None:
                 try:
-                    assessment = assess_accessibility(payload["user_id"], "lip", tuple(candidate["color"]))
+                    assessment = assess_accessibility(payload["user_id"], payload.get("category", "lip"), tuple(candidate["color"]))
                     if assessment is not None:
                         if not isinstance(assessment, AccessibilityAssessment):
                             raise ValueError("Expected AccessibilityAssessment or None.")

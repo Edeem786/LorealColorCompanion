@@ -10,6 +10,8 @@ def dispatch(path, payload, database=DATABASE):
         raise ValueError("Expected an object.")
     user = payload.get("user_id")
     from preference.models import validate_key
+    category = payload.get("category", "lip")
+    validate_key(category, "category")
     profile_id = payload.get("preference_profile_id", "personal")
     validate_key(profile_id, "preference_profile_id")
     with SQLiteStorage(database) as storage:
@@ -28,9 +30,9 @@ def dispatch(path, payload, database=DATABASE):
                 raise ValueError("rating must be -1 or 1.")
             storage.connection.execute("""CREATE TABLE IF NOT EXISTS onboarding_events (
                 event_id TEXT PRIMARY KEY, payload TEXT NOT NULL)""")
-            signature = json.dumps([user, "lip", color, rating])
+            signature = json.dumps([user, category, color, rating])
             if profile_id != "personal":
-                signature = json.dumps([user, "lip", color, rating, profile_id])
+                signature = json.dumps([user, category, color, rating, profile_id])
             # Single transaction covers deduplication and the underlying preference event.
             from datetime import datetime, timezone
             with storage.connection:
@@ -42,25 +44,25 @@ def dispatch(path, payload, database=DATABASE):
                 else:
                     storage.connection.execute("INSERT INTO onboarding_events VALUES (?, ?)", (event_id, signature))
                     storage.connection.execute(
-                        "INSERT INTO ratings(user_id, category, l, a, b, rating, timestamp, preference_profile_id) VALUES (?, 'lip', ?, ?, ?, ?, ?, ?)",
-                        (user, *color, rating, datetime.now(timezone.utc).isoformat(), profile_id),
+                        "INSERT INTO ratings(user_id, category, l, a, b, rating, timestamp, preference_profile_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                        (user, category, *color, rating, datetime.now(timezone.utc).isoformat(), profile_id),
                     )
-            return {"saved": True, "rating_count": len(storage.get_ratings(user, "lip", profile_id))}
+            return {"saved": True, "rating_count": len(storage.get_ratings(user, category, profile_id))}
         if path == "/api/rank":
             candidates = payload.get("candidates")
-            if not isinstance(candidates, list) or len(candidates) > 50:
-                raise ValueError("Provide up to 50 candidates.")
+            if not isinstance(candidates, list) or len(candidates) > 1000:
+                raise ValueError("Provide up to 1000 candidates.")
             mode = payload.get("mode", "personal")
             if mode not in ("personal", "shared", "weighted"):
                 raise ValueError("Unknown ranking mode.")
             if mode == "weighted":
-                return model.rank_weighted(user, "lip", candidates,
+                return model.rank_weighted(user, category, candidates,
                     personal_weight=payload.get("personal_weight", 1.0),
                     environment_profile_id=payload.get("environment_profile_id"))
             if mode == "shared":
-                results = model.rank_shared(user, "lip", candidates, payload.get("environment_profile_id"))
+                results = model.rank_shared(user, category, candidates, payload.get("environment_profile_id"))
                 return {"results": results, "mode": "shared", "shared_match_count": sum(r["shared_match"] for r in results)}
-            return {"results": model.rank_colors(user, "lip", candidates),
-                    "rating_count": len(storage.get_ratings(user, "lip"))}
+            return {"results": model.rank_colors(user, category, candidates),
+                    "rating_count": len(storage.get_ratings(user, category))}
         raise ValueError("Unknown endpoint.")
 
