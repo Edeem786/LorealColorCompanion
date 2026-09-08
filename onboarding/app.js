@@ -1,7 +1,5 @@
 const $ = id => document.getElementById(id);
 const sets = {personal: [], aesthetic: []};
-// Server advertises optional adapters. Manual cropping always remains available.
-const capabilities=fetch('/api/capabilities').then(r=>r.ok?r.json():{}).catch(()=>({}));
 let revision=0, loading=false, saving=false, rankingRequest=0, confirmedEnvironment=null;
 function status(message){$('status').textContent=message;}
 function user(){const id=$('user').value.trim();if(!id)throw Error('Enter your profile ID first.');return id;}
@@ -42,12 +40,6 @@ function renderReference(ref,kind){
   let start=null;const point=e=>{const r=canvas.getBoundingClientRect();return [Math.max(0,Math.min(99,(e.clientX-r.left)/r.width*100)),Math.max(0,Math.min(99,(e.clientY-r.top)/r.height*100))];};
   canvas.onpointerdown=e=>{if(saving||ref.frozen)return;start=point(e);canvas.setPointerCapture(e.pointerId);clearExtraction(ref);};canvas.onpointermove=e=>{if(!start)return;const end=point(e);ref.box={left:Math.min(start[0],end[0]),top:Math.min(start[1],end[1]),width:Math.max(1,Math.abs(start[0]-end[0])),height:Math.max(1,Math.abs(start[1]-end[1]))};sync();};canvas.onpointerup=canvas.onpointercancel=()=>{start=null;};
   const extractButton=document.createElement('button');extractButton.textContent='Extract lip shades';extractButton.setAttribute('aria-label','Extract lip shades from '+ref.name);extractButton.onclick=()=>extract(ref);
-<<<<<<< HEAD
-<<<<<<< Updated upstream
-  const remove=document.createElement('button');remove.textContent='Remove reference';remove.className='secondary';remove.onclick=()=>{sets[kind]=sets[kind].filter(r=>r!==ref);card.remove();updateButtons();};
-  ref.palette=document.createElement('div');ref.palette.className='palette';const hint=document.createElement('p');hint.className='hint';hint.textContent='Drag over the lip makeup or adjust the crop sliders, then extract shades.';
-  card.append(heading,canvas,hint,controls,extractButton,remove,ref.palette);$(kind+'-gallery').append(card);sync();
-=======
   // Placeholder only: no handler, image upload, or automatic ratings.
   const detectButton=document.createElement('button');
   detectButton.textContent='Auto-detect lip shades';
@@ -59,30 +51,6 @@ function renderReference(ref,kind){
   const privacy=document.createElement('p');privacy.className='hint';
   privacy.textContent='Auto-detection is coming soon. For now, select a rectangle and extract lip shades manually.';
   card.append(heading,canvas,hint,controls,detectButton,privacy,extractButton,remove,ref.palette);$(kind+'-gallery').append(card);sync();
->>>>>>> Stashed changes
-=======
-  const detectButton=document.createElement('button');detectButton.textContent='Suggest lip region';detectButton.hidden=true;
-  detectButton.setAttribute('aria-label','Suggest lip region for '+ref.name);
-  capabilities.then(c=>{detectButton.hidden=!c.region_detection;});
-  detectButton.onclick=async()=>{
-    const ticket=revision;detectButton.disabled=true;
-    try{
-      // Send the exact oriented/resized canvas shown to the user, not the original file.
-      const blob=await new Promise(resolve=>ref.source.toBlob(resolve,'image/png'));
-      if(!blob)throw Error('Could not prepare this image. Select the region manually.');
-      const form=new FormData();form.append('image',blob,'reference.png');
-      const response=await fetch('/api/detect-region',{method:'POST',body:form});const data=await response.json();
-      if(ticket!==revision||ref.frozen||!sets[kind].includes(ref))return;
-      if(data.region){const b=data.region;ref.box={left:b.x*100,top:b.y*100,width:b.width*100,height:b.height*100};clearExtraction(ref);sync();}
-      status(data.message||data.error||'Select the region manually.');
-    }catch(error){status(error.message);}finally{detectButton.disabled=ref.frozen||saving;}
-  };
-  const remove=document.createElement('button');remove.textContent='Remove reference';remove.className='secondary';remove.onclick=()=>{sets[kind]=sets[kind].filter(r=>r!==ref);card.remove();updateButtons();};
-  ref.palette=document.createElement('div');ref.palette.className='palette';const hint=document.createElement('p');hint.className='hint';hint.textContent='Drag over the lip makeup or adjust the crop sliders, then extract shades.';
-  const privacy=document.createElement('p');privacy.className='hint';privacy.hidden=true;privacy.textContent='Suggest lip region sends this resized photo to the local detection service. Review its crop before extracting shades.';
-  capabilities.then(c=>{privacy.hidden=!c.region_detection;});
-  card.append(heading,canvas,hint,controls,detectButton,privacy,extractButton,remove,ref.palette);$(kind+'-gallery').append(card);sync();
->>>>>>> d05f778c9b3315039556edab147616819aa4f1f4
 }
 async function loadFiles(kind,files){
   if(loading||saving)return;loading=true;const ticket=revision;updateButtons();const errors=[];
