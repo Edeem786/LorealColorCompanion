@@ -6,6 +6,7 @@ from flask import Flask, abort, jsonify, request, send_from_directory
 from werkzeug.exceptions import HTTPException
 
 from .catalog import CATALOG_DIR, load_catalog, list_catalogs
+from .cvd_profile import get_cvd_profile, save_cvd_profile
 from .actions import DATABASE, dispatch  # Retained for existing Python callers.
 from .integrations import AccessibilityAssessment, MakeupRegion
 
@@ -37,7 +38,7 @@ def create_app(database=DATABASE, *, catalog_directory=CATALOG_DIR, detect_regio
 
     @app.get("/<filename>")
     def assets(filename):
-        if filename not in {"app.js", "colors.js", "style.css"}:
+        if filename not in {"app.js", "colors.js", "cvd-form.js", "style.css"}:
             abort(404)
         return send_from_directory(ROOT, filename)
 
@@ -53,6 +54,18 @@ def create_app(database=DATABASE, *, catalog_directory=CATALOG_DIR, detect_regio
     @app.get("/api/catalogs")
     def catalogs():
         return {"catalogs": list_catalogs(catalog_directory)}
+
+    @app.get("/api/cvd-profile")
+    def cvd_profile():
+        return {"profile": get_cvd_profile(request.args.get("user_id"), database)}
+
+    @app.post("/api/cvd-profile")
+    def update_cvd_profile():
+        payload = request.get_json()
+        if not isinstance(payload, dict):
+            raise ValueError("Expected an object.")
+        return {"profile": save_cvd_profile(payload.get("user_id"), payload.get("type"),
+                                            payload.get("severity"), database)}
 
     @app.post("/api/recommend")
     @app.post("/api/rank")

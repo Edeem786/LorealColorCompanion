@@ -1,6 +1,6 @@
 # Product catalogs
 
-Put one JSON list per makeup category here: `blush.json`, `lip.json`, `eyeshadow.json`, etc. Files are read on request, so changes require refreshing the browser, not restarting Flask. Empty lists appear as unavailable categories; `lip.json` contains the supplied 52 lipsticks. Their source category `lipstick` is preserved in `source_category` and mapped to `lip` for compatibility with existing preferences. Names, IDs and color values are unchanged. The supplied lipstick data has no `color_source`, so the UI labels its source as unspecified.
+Put one JSON list per makeup category here: `blush.json`, `lip.json`, `eyeshadow.json`, etc. Files are read on request, so changes require refreshing the browser, not restarting Flask. Empty lists appear as unavailable categories; `lip.json` contains the supplied 52 lipsticks. Their source category `lipstick` is preserved in `source_category` and mapped to `lip` for compatibility with existing preferences. Names, IDs and color values are unchanged. The optional `color_source` metadata is retained in the catalog but is not displayed on product cards.
 
 Each product requires a unique `id`, `product_name`, `shade_name`, `category` matching its filename, and `color` containing normalized **OKLab** `L`, `a`, `b`. RGB data must be converted first. Optional metadata such as `color_source` is preserved.
 

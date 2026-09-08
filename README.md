@@ -2,6 +2,8 @@
 
 ## Guided reference flow
 
+Color vision is a separate stage after aesthetic inspiration and before the balance slider. Save the diagnosed type and severity to continue. Details are saved per user, separately from preferences. “Unsure” is disabled for now. Profiles include numeric `severity_level`: mild = 1, moderate = 2, severe = 3. This is an ordinal encoding, not a measured severity or simulation strength. Original labels are retained, and existing profiles get the derived number when read. These details do not change recommendations until a CVD adapter is connected; see [INTEGRATION.md](INTEGRATION.md).
+
 The site now uses Flask; the core preference model still uses only the standard library. The CV and CVD integration guide is in [INTEGRATION.md](INTEGRATION.md).
 
 On a standard Windows Python installation:

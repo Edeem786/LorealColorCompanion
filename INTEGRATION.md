@@ -46,6 +46,14 @@ So this is a frequent-color-bin method with a mean **within each bin**, not a me
 
 ## Connect CVD assessment
 
+The color vision form is stage 3, after aesthetic references and before stage 4 (balance). Saving advances to balance; Back returns to the aesthetic stage. Both new and existing profiles returned by `get_cvd_profile` and the HTTP API include `severity_level`: **mild = 1, moderate = 2, severe = 3**. The mapping lives in `SEVERITY_LEVELS` in `onboarding/cvd_profile.py`. The label remains stored; the level is derived to avoid two fields disagreeing. This is an ordinal code only, not a clinically calibrated numerical severity or a 0–1 simulation parameter. The CVD teammate should define any model-specific conversion separately.
+
+The site now collects **user-entered diagnosis details** in a separate `cvd_profiles` SQLite table: type (`deutan`, `protan`, `tritan`, `other`), severity (`mild`, `moderate`, `severe`), source (`user_entered_diagnosis`), and update timestamp. This is not independently verified. Unsure is a disabled UI placeholder and rejected by the API until supported. An unfilled profile remains absent; no severity is guessed.
+
+Read it in your adapter with `from onboarding.cvd_profile import get_cvd_profile`, then `get_cvd_profile(user_id)` (or pass your database path as the second argument). Other diagnosed types must be treated as unsupported unless your method supports them. Never map severity labels to numerical simulation values without defining that mapping. Saving this profile creates no preference events and does not activate CVD scoring.
+
+`GET /api/cvd-profile?user_id=...` returns `{"profile": null}` or the saved record. `POST /api/cvd-profile` accepts `user_id`, `type`, and `severity` and updates that user's record. As with the rest of this local prototype, this is not an authenticated account system.
+
 ```python
 from onboarding.integrations import AccessibilityAssessment
 
