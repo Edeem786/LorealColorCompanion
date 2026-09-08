@@ -1,5 +1,7 @@
 const $ = id => document.getElementById(id);
 const sets = {personal: [], aesthetic: []};
+// Server advertises optional adapters. Manual cropping always remains available.
+const capabilities=fetch('/api/capabilities').then(r=>r.ok?r.json():{}).catch(()=>({}));
 let revision=0, loading=false, saving=false, rankingRequest=0, confirmedEnvironment=null;
 function status(message){$('status').textContent=message;}
 function user(){const id=$('user').value.trim();if(!id)throw Error('Enter your profile ID first.');return id;}
@@ -31,9 +33,27 @@ function renderReference(ref,kind){
   let start=null;const point=e=>{const r=canvas.getBoundingClientRect();return [Math.max(0,Math.min(99,(e.clientX-r.left)/r.width*100)),Math.max(0,Math.min(99,(e.clientY-r.top)/r.height*100))];};
   canvas.onpointerdown=e=>{if(saving||ref.frozen)return;start=point(e);canvas.setPointerCapture(e.pointerId);clearExtraction(ref);};canvas.onpointermove=e=>{if(!start)return;const end=point(e);ref.box={left:Math.min(start[0],end[0]),top:Math.min(start[1],end[1]),width:Math.max(1,Math.abs(start[0]-end[0])),height:Math.max(1,Math.abs(start[1]-end[1]))};sync();};canvas.onpointerup=canvas.onpointercancel=()=>{start=null;};
   const extractButton=document.createElement('button');extractButton.textContent='Extract lip shades';extractButton.setAttribute('aria-label','Extract lip shades from '+ref.name);extractButton.onclick=()=>extract(ref);
+  const detectButton=document.createElement('button');detectButton.textContent='Suggest lip region';detectButton.hidden=true;
+  detectButton.setAttribute('aria-label','Suggest lip region for '+ref.name);
+  capabilities.then(c=>{detectButton.hidden=!c.region_detection;});
+  detectButton.onclick=async()=>{
+    const ticket=revision;detectButton.disabled=true;
+    try{
+      // Send the exact oriented/resized canvas shown to the user, not the original file.
+      const blob=await new Promise(resolve=>ref.source.toBlob(resolve,'image/png'));
+      if(!blob)throw Error('Could not prepare this image. Select the region manually.');
+      const form=new FormData();form.append('image',blob,'reference.png');
+      const response=await fetch('/api/detect-region',{method:'POST',body:form});const data=await response.json();
+      if(ticket!==revision||ref.frozen||!sets[kind].includes(ref))return;
+      if(data.region){const b=data.region;ref.box={left:b.x*100,top:b.y*100,width:b.width*100,height:b.height*100};clearExtraction(ref);sync();}
+      status(data.message||data.error||'Select the region manually.');
+    }catch(error){status(error.message);}finally{detectButton.disabled=ref.frozen||saving;}
+  };
   const remove=document.createElement('button');remove.textContent='Remove reference';remove.className='secondary';remove.onclick=()=>{sets[kind]=sets[kind].filter(r=>r!==ref);card.remove();updateButtons();};
   ref.palette=document.createElement('div');ref.palette.className='palette';const hint=document.createElement('p');hint.className='hint';hint.textContent='Drag over the lip makeup or adjust the crop sliders, then extract shades.';
-  card.append(heading,canvas,hint,controls,extractButton,remove,ref.palette);$(kind+'-gallery').append(card);sync();
+  const privacy=document.createElement('p');privacy.className='hint';privacy.hidden=true;privacy.textContent='Suggest lip region sends this resized photo to the local detection service. Review its crop before extracting shades.';
+  capabilities.then(c=>{privacy.hidden=!c.region_detection;});
+  card.append(heading,canvas,hint,controls,detectButton,privacy,extractButton,remove,ref.palette);$(kind+'-gallery').append(card);sync();
 }
 async function loadFiles(kind,files){
   if(loading||saving)return;loading=true;const ticket=revision;updateButtons();const errors=[];
@@ -68,7 +88,15 @@ $('recommend').onclick=async()=>{
     const note=document.createElement('p');note.textContent=`${Math.round(data.personal_weight*100)}% my taste · ${Math.round(data.environment_weight*100)}% aesthetic inspiration. Scores express similarity-based preferences, not probabilities.`;
     const grid=document.createElement('div');grid.className='cards';$('results').replaceChildren(note,grid);
     if(!data.results.some(r=>r.score!==null&&r.score>0)){const message=document.createElement('p');message.textContent='No positive match for this balance yet. Try more references or adjust your balance.';$('results').insertBefore(message,grid);}
-    for(const [i,item] of data.results.slice(0,12).entries()){const card=document.createElement('article');card.className='card';const swatch=document.createElement('div');swatch.className='swatch';swatch.style.background=item.hex;const title=document.createElement('h3');title.textContent=`${i+1}. ${item.name}`;const summary=document.createElement('p');summary.textContent=item.score===null?'Not enough nearby evidence':`Preference score: ${item.score.toFixed(2)}${hasAesthetic()&&item.shared_match?' · Positive evidence in both profiles':''}`;const detail=document.createElement('details'),label=document.createElement('summary'),reason=document.createElement('p');label.textContent='Why this shade';reason.textContent=`My taste: ${item.personal.reason.join(' ')}${hasAesthetic()?' Aesthetic estimate: '+item.environment.reason.join(' '):''}`;detail.append(label,reason);const code=document.createElement('p');code.textContent=item.hex.toUpperCase();card.append(swatch,title,code,summary,detail);grid.append(card);}status('Suggestions ready. Change the slider and suggest again to compare balances.');
+    for(const [i,item] of data.results.slice(0,12).entries()){const card=document.createElement('article');card.className='card';const swatch=document.createElement('div');swatch.className='swatch';swatch.style.background=item.hex;const title=document.createElement('h3');title.textContent=`${i+1}. ${item.name}`;const summary=document.createElement('p');summary.textContent=item.score===null?'Not enough nearby evidence':`Preference score: ${item.score.toFixed(2)}${hasAesthetic()&&item.shared_match?' · Positive evidence in both profiles':''}`;const detail=document.createElement('details'),label=document.createElement('summary'),reason=document.createElement('p');label.textContent='Why this shade';reason.textContent=`My taste: ${item.personal.reason.join(' ')}${hasAesthetic()?' Aesthetic estimate: '+item.environment.reason.join(' '):''}`;detail.append(label,reason);const code=document.createElement('p');code.textContent=item.hex.toUpperCase();card.append(swatch,title,code,summary,detail);
+      if(item.accessibility){
+        const accessibility=document.createElement('p');
+        accessibility.textContent=`Accessibility: ${item.accessibility.score.toFixed(2)} / 1. ${item.accessibility.reason}`;
+        card.append(accessibility);
+      }else if(item.accessibility_error){
+        const unavailable=document.createElement('p');unavailable.textContent=item.accessibility_error;card.append(unavailable);
+      }
+      grid.append(card);}status('Suggestions ready. Change the slider and suggest again to compare balances.');
   }catch(e){status(e.message);}finally{$('recommend').disabled=false;}
 };
 $('user').onchange=()=>{revision++;confirmedEnvironment=null;for(const kind of ['personal','aesthetic']){sets[kind]=[];$(kind+'-gallery').replaceChildren();$(kind+'-upload').value='';}$('add-aesthetic').value='no';$('aesthetic-inputs').hidden=true;stage('personal');updateButtons();status('Profile changed. Add references for this user.');};
