@@ -18,7 +18,16 @@ function clearExtraction(ref){ref.shades=[];ref.palette.replaceChildren();update
 function extract(ref){
   const b=ref.box,crop=document.createElement('canvas'),x=Math.floor(b.left*ref.source.width/100),y=Math.floor(b.top*ref.source.height/100),w=Math.max(1,Math.floor(b.width*ref.source.width/100)),h=Math.max(1,Math.floor(b.height*ref.source.height/100));
   crop.width=Math.min(w,160);crop.height=Math.min(h,160);crop.getContext('2d').drawImage(ref.source,x,y,w,h,0,0,crop.width,crop.height);
-  ref.shades=palette(crop.getContext('2d').getImageData(0,0,crop.width,crop.height).data).map(s=>({...s,selected:true,event_id:crypto.randomUUID(),saved:false}));ref.palette.replaceChildren();
+  const extracted=palette(crop.getContext('2d').getImageData(0,0,crop.width,crop.height).data);
+  showReferenceShades(ref, extracted.map(s=>s.rgb));
+}
+// Future detector response: showReferenceShades(ref, response.shades).
+// This only populates the review UI. Continue is still required to save likes.
+function showReferenceShades(ref, rgbColors){
+  if(ref.frozen||saving)return;
+  const shades=shadesFromRgb(rgbColors); // Validate before changing existing review.
+  ref.shades=shades.map(s=>({...s,selected:true,event_id:crypto.randomUUID(),saved:false}));
+  ref.palette.replaceChildren();clearResults();
   ref.shades.forEach((s,i)=>{const label=document.createElement('label');label.className='palette-option';const input=document.createElement('input');input.type='checkbox';input.checked=true;input.onchange=()=>{s.selected=input.checked;updateButtons();clearResults();};const swatch=document.createElement('span');swatch.className='mini-swatch';swatch.style.background=s.hex;const text=document.createElement('span');text.textContent=`Shade ${i+1} · ${s.hex.toUpperCase()} · lightness ${Math.round(s.color[0]*100)}/100`;label.append(input,swatch,text);ref.palette.append(label);});
   status(ref.shades.length?'Review the checked shades. Nothing is saved until you continue.':'No opaque shades found. Adjust the crop or remove this image.');updateButtons();
 }
@@ -31,9 +40,23 @@ function renderReference(ref,kind){
   let start=null;const point=e=>{const r=canvas.getBoundingClientRect();return [Math.max(0,Math.min(99,(e.clientX-r.left)/r.width*100)),Math.max(0,Math.min(99,(e.clientY-r.top)/r.height*100))];};
   canvas.onpointerdown=e=>{if(saving||ref.frozen)return;start=point(e);canvas.setPointerCapture(e.pointerId);clearExtraction(ref);};canvas.onpointermove=e=>{if(!start)return;const end=point(e);ref.box={left:Math.min(start[0],end[0]),top:Math.min(start[1],end[1]),width:Math.max(1,Math.abs(start[0]-end[0])),height:Math.max(1,Math.abs(start[1]-end[1]))};sync();};canvas.onpointerup=canvas.onpointercancel=()=>{start=null;};
   const extractButton=document.createElement('button');extractButton.textContent='Extract lip shades';extractButton.setAttribute('aria-label','Extract lip shades from '+ref.name);extractButton.onclick=()=>extract(ref);
+<<<<<<< Updated upstream
   const remove=document.createElement('button');remove.textContent='Remove reference';remove.className='secondary';remove.onclick=()=>{sets[kind]=sets[kind].filter(r=>r!==ref);card.remove();updateButtons();};
   ref.palette=document.createElement('div');ref.palette.className='palette';const hint=document.createElement('p');hint.className='hint';hint.textContent='Drag over the lip makeup or adjust the crop sliders, then extract shades.';
   card.append(heading,canvas,hint,controls,extractButton,remove,ref.palette);$(kind+'-gallery').append(card);sync();
+=======
+  // Placeholder only: no handler, image upload, or automatic ratings.
+  const detectButton=document.createElement('button');
+  detectButton.textContent='Auto-detect lip shades';
+  detectButton.disabled=true;
+  detectButton.dataset.saved='true'; // Keep disabled when save controls unlock.
+  detectButton.setAttribute('aria-label','Auto-detect lip shades for '+ref.name+' (coming soon)');
+  const remove=document.createElement('button');remove.textContent='Remove reference';remove.className='secondary';remove.onclick=()=>{sets[kind]=sets[kind].filter(r=>r!==ref);card.remove();updateButtons();};
+  ref.palette=document.createElement('div');ref.palette.className='palette';const hint=document.createElement('p');hint.className='hint';hint.textContent='Drag over the lip makeup or adjust the crop sliders, then extract shades.';
+  const privacy=document.createElement('p');privacy.className='hint';
+  privacy.textContent='Auto-detection is coming soon. For now, select a rectangle and extract lip shades manually.';
+  card.append(heading,canvas,hint,controls,detectButton,privacy,extractButton,remove,ref.palette);$(kind+'-gallery').append(card);sync();
+>>>>>>> Stashed changes
 }
 async function loadFiles(kind,files){
   if(loading||saving)return;loading=true;const ticket=revision;updateButtons();const errors=[];

@@ -9,6 +9,15 @@ function toLab(rgb) {
     .0259040371*l + .7827717662*m - .808675766*s];
 }
 function hex(rgb) { return '#' + rgb.map(v => Math.round(v).toString(16).padStart(2,'0')).join(''); }
+// Shared entry point for manually extracted RGB and future CV output.
+function shadesFromRgb(colors) {
+  if (!Array.isArray(colors) || colors.length > 12) throw Error('Expected up to 12 RGB shades.');
+  return colors.map(rgb => {
+    if (!Array.isArray(rgb) || rgb.length !== 3 || !rgb.every(v => Number.isInteger(v) && v >= 0 && v <= 255))
+      throw Error('Each shade must contain three RGB integers from 0 to 255.');
+    return {rgb: [...rgb], color: toLab(rgb), hex: hex(rgb)};
+  });
+}
 function palette(data) {
   const bins = new Map();
   for (let i=0;i<data.length;i+=4) {
@@ -27,4 +36,4 @@ function palette(data) {
   }
   return result;
 }
-if (typeof module !== 'undefined') module.exports={toLab,palette};
+if (typeof module !== 'undefined') module.exports={toLab,palette,shadesFromRgb};

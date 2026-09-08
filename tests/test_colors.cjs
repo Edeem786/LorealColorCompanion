@@ -10,3 +10,11 @@ assert.equal(solid.length,1);assert.equal(solid[0].hex,'#b45064');
 const mixed=palette([180,80,100,255,180,80,100,255,30,40,90,255,255,255,255,255]);
 assert.equal(mixed.length,3);assert.equal(mixed[0].hex,'#b45064');
 console.log('Color conversion and palette extraction checks passed.');
+const {shadesFromRgb} = require('../onboarding/colors.js');
+const shades=shadesFromRgb([[180,80,100]]);
+assert.equal(shades[0].hex,'#b45064');
+close(shades[0].color,toLab([180,80,100]));
+assert.deepEqual(shadesFromRgb([]),[]);
+for(const invalid of [null,[[256,0,0]],[[1,2]],[[0.5,0,0]],[[true,0,0]],[[NaN,0,0]]])
+  assert.throws(()=>shadesFromRgb(invalid));
+console.log('RGB integration contract checks passed.');
