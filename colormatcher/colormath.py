@@ -1,4 +1,5 @@
 import math
+import itertools
 
 def hue_angle(color):
     L, a, b = color
@@ -43,3 +44,19 @@ def combined_item_score(preference_score, suitability_score):
     if preference_score <= suitability_score:
         return preference_score, "preference"
     return suitability_score, "suitability"
+
+def generate_candidate_palettes(shortlists):
+    """
+    shortlists: dict of category -> list of scored product dicts
+                (already top-N per category from the combined preference+suitability step)
+    """
+    categories = list(shortlists.keys())
+    for combo in itertools.product(*(shortlists[c] for c in categories)):
+        palette = dict(zip(categories, combo))
+        colors = [product["color"] for product in palette.values()]
+        palette_coherence = coherence(colors)
+        yield palette, palette_coherence
+
+def palette_score(palette, coherence_score):
+    item_scores = [product["combined_score"] for product in palette.values()]
+    return min(min(item_scores), coherence_score)

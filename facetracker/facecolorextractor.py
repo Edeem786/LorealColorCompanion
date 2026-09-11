@@ -20,6 +20,7 @@ class FaceLandmark(IntEnum):
     FOREHEAD_CENTER = 151
     FOREHEAD_LEFT = 104
     FOREHEAD_RIGHT = 333
+    FOREHEAD_TOP = 10 
 
     NOSE_TIP = 1
     NOSE_BRIDGE = 6
@@ -34,6 +35,9 @@ class FaceLandmark(IntEnum):
     LEFT_EYE_INNER = 133
     RIGHT_EYE_OUTER = 362
     RIGHT_EYE_INNER = 263
+
+    LEFT_IRIS_CENTER = 468
+    RIGHT_IRIS_CENTER = 473
 
     LEFT_EYEBROW_INNER = 55
     LEFT_EYEBROW_OUTER = 46

@@ -26,6 +26,11 @@ SKIN_SAMPLE_POINTS = {
     "chin": FaceLandmark.CHIN,
 }
 
+EYE_SAMPLE_POINTS = {
+    "left_iris": FaceLandmark.LEFT_IRIS_CENTER,
+    "right_iris": FaceLandmark.RIGHT_IRIS_CENTER,
+}
+
 
 def detect_skin_shades(image_bytes: bytes) -> list[list[int]]:
     """Return distinct skin shades as sRGB [R, G, B] integers in 0..255.
@@ -59,6 +64,21 @@ def detect_lip_shades(image_bytes: bytes) -> list[list[int]]:
     shades = [r["color_rgb"] for r in results]
     return _dedupe_shades(shades)
     raise NotImplementedError("Lip shade detection will be implemented by the CV teammate.")
+
+
+def detect_eye_shades(image_bytes: bytes) -> list[list[int]]:
+    """Return distinct iris shades as sRGB [R, G, B] integers in 0..255.
+
+    Input: the browser's oriented/resized full reference image, encoded as PNG.
+    Return [] when no usable eye/shades are detected. Do not return black as
+    an error placeholder. Convert OpenCV BGR output to RGB before returning.
+    Detection and shade extraction both belong in this function.
+    """
+    results = find_color(image_bytes, EYE_SAMPLE_POINTS)
+    if not results:
+        return []
+    shades = [r["color_rgb"] for r in results]
+    return _dedupe_shades(shades)
 
 
 def _dedupe_shades(shades: list[list[int]], threshold: int = 10) -> list[list[int]]:
