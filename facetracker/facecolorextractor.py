@@ -4,6 +4,7 @@ from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 import cv2
 import os
+from pathlib import Path
 
 from enum import IntEnum
 
@@ -76,19 +77,21 @@ def load_image(image_source):
         return cv2.imread(image_source)
 
 
-def get_landmarks(image):
+def get_landmarks(image, model_path=None):
     """Detect face landmarks in an already-loaded BGR image array."""
-    base_options = python.BaseOptions(model_asset_path="face_landmarker.task")
+    model_path = Path(model_path) if model_path is not None else Path(__file__).with_name("face_landmarker.task")
+    if not model_path.is_file():
+        raise FileNotFoundError(f"Face model missing: {model_path}. Obtain face_landmarker.task from your CV teammate.")
+    base_options = python.BaseOptions(model_asset_path=str(model_path))
     options = vision.FaceLandmarkerOptions(
         base_options=base_options,
         num_faces=1
     )
-    detector = vision.FaceLandmarker.create_from_options(options)
-
     mp_image = mp.Image(image_format=mp.ImageFormat.SRGB,
                          data=cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
 
-    result = detector.detect(mp_image)
+    with vision.FaceLandmarker.create_from_options(options) as detector:
+        result = detector.detect(mp_image)
 
     if not result.face_landmarks:
         return None
@@ -172,7 +175,7 @@ def find_color(image_source, sample_points=None):
     """image_source: a file path (str) or raw image bytes."""
     image = load_image(image_source)
     if image is None:
-        print(f"Could not load image from: {image_source!r}")
+        print("Could not decode the supplied image")
         return None
 
     try:

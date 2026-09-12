@@ -4,7 +4,7 @@
 
 The UI keeps manual rectangle selection and **Extract lip shades**. Every reference also shows a disabled **Auto-detect lip shades** placeholder. It has no click handler, makes no network request, and saves nothing. The CV teammate will implement detection AND shade extraction, not just a rectangle.
 
-`onboarding/vision.py` contains the unimplemented `detect_lip_shades(image_bytes)` function. It deliberately raises `NotImplementedError`. It is not imported or called by the live app.
+The pulled `onboarding/vision.py` now implements `detect_lip_shades(image_bytes)`, plus skin and iris sampling, using `facetracker/facecolorextractor.py`. These functions are not imported or called by the live app. Install the optional teammate dependencies from `requirements-vision.txt` in a compatible CV environment and supply `facetracker/face_landmarker.task` before testing them. The model is not committed in Git. Detection has not been validated in the current MSYS2 environment, which lacks those dependencies and the model. The newly pulled `colormatcher/colormath.py` is experimental and is not connected to preference ranking.
 
 ## RGB contract
 
@@ -22,7 +22,7 @@ The proposed request supplies the oriented, resized **full reference image as PN
 
 ## How to connect it later
 
-1. Implement `detect_lip_shades(image_bytes)` in `onboarding/vision.py`, or wrap your existing model with that signature.
+1. Validate the existing `detect_lip_shades(image_bytes)` in `onboarding/vision.py` with the teammate's dependencies and model. Check its output against the RGB contract above before connecting it.
 2. Add a Flask `POST /api/detect-lip-shades` route accepting multipart field `image`. Decode/validate the PNG, enforce a size limit, call the function and return `{"shades": [[180, 80, 100]]}`. This route does **not** exist yet. Add it to the image-upload exception in `check_request` so the 100 KB JSON limit does not incorrectly apply. Retain the 10 MB image limit.
 3. Enable the placeholder in `renderReference` in `onboarding/app.js`: remove its permanent disabled marker and add a handler. Convert `ref.source` to a PNG Blob and send it with `FormData`. Disclose the image transfer before enabling the feature. No original image is sent by today's placeholder.
 4. Pass the response to `showReferenceShades(ref, response.shades)`. This existing helper validates RGB, converts it to OKLab using `shadesFromRgb`, and fills the same checkboxes used by manual extraction. The user still reviews shades and clicks Continue before likes are saved.
@@ -84,4 +84,4 @@ if __name__ == "__main__":
     app.run(host="127.0.0.1", port=8000)
 ```
 
-Replace the example CVD module name with the actual module. The shade-detector route described above is a separate future change. No model implementation, automatic rating creation, new database or additional framework is needed in this skeleton.
+Replace the example CVD module name with the actual module. The shade-detector route described above is a separate future change. The pulled vision implementation still needs validation; connecting it does not require a new database or additional framework, and detection should not automatically create ratings.

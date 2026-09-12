@@ -6,6 +6,10 @@ Color vision is a separate stage after aesthetic inspiration and before the bala
 
 The site now uses Flask; the core preference model still uses only the standard library. The CV and CVD integration guide is in [INTEGRATION.md](INTEGRATION.md).
 
+`requirements.txt` installs only Flask and its dependencies for the current site. The pulled face-extractor dependency pins are preserved separately in `requirements-vision.txt`; they are optional and have not been validated in this machine's MSYS2 Python environment. The CV teammate also needs to supply `facetracker/face_landmarker.task` (ignored by Git). The detector now resolves this path relative to its module rather than the terminal's working directory. Auto-detection is still a disabled UI placeholder; the new `colormatcher` functions are also not used by current recommendations.
+
+Frontend code is kept in one readable `onboarding/app.js`, grouped into state/helpers, crop and shade review, reference cards, file loading, saving, navigation, and recommendation rendering. `continuePersonalReferences`, `continueAestheticReferences`, and `requestRecommendations` are the main button handlers. `renderRecommendations` builds the result cards. Shared helpers used by `cvd-form.js` remain unchanged. Run `node tests/test_app.cjs` for lightweight frontend behavior checks, alongside the Python suite and `node tests/test_colors.cjs`.
+
 On a standard Windows Python installation:
 
 ```powershell
