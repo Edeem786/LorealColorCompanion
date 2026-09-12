@@ -61,6 +61,8 @@ SKIN_SAMPLE_POINTS = {
     "chin": FaceLandmark.CHIN,
 }
 
+MODEL_PATH = os.path.join(os.path.dirname(__file__), 'face_landmarker.task')
+
 
 def load_image(image_source):
     """Load an image into a BGR numpy array, from either a file path or raw bytes.
@@ -78,7 +80,7 @@ def load_image(image_source):
 
 def get_landmarks(image):
     """Detect face landmarks in an already-loaded BGR image array."""
-    base_options = python.BaseOptions(model_asset_path="face_landmarker.task")
+    base_options = python.BaseOptions(model_asset_path=MODEL_PATH)
     options = vision.FaceLandmarkerOptions(
         base_options=base_options,
         num_faces=1

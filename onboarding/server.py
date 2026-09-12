@@ -1,5 +1,7 @@
 """Flask entry point. Run with python -m onboarding.server."""
 import sqlite3
+import base64
+from .vision import detect_lip_shades
 from pathlib import Path
 
 from flask import Flask, abort, jsonify, request, send_from_directory
@@ -50,6 +52,22 @@ def create_app(database=DATABASE, *, catalog_directory=CATALOG_DIR, detect_regio
     @app.post("/api/rating")
     def rating():
         return jsonify(dispatch("/api/rating", request.get_json(), database))
+
+    @app.post("/api/detect-lip-shades")
+    def detect_lip():
+        data = request.get_json()
+        if not data or "image" not in data:
+            return jsonify({"error": "No image provided."}), 400
+
+        try:
+            # data["image"] is a data URL like "data:image/png;base64,iVBOR..."
+            header, encoded = data["image"].split(",", 1)
+            image_bytes = base64.b64decode(encoded)
+        except Exception:
+            return jsonify({"error": "Invalid image data."}), 400
+
+        shades = detect_lip_shades(image_bytes)
+        return jsonify({"shades": shades})
 
     @app.get("/api/catalogs")
     def catalogs():
