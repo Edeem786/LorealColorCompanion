@@ -308,8 +308,8 @@ function renderReference(ref, kind) {
     'Auto-detection sends this resized photo to the app server for processing. Photos are not saved. ' +
     (category === 'blush' ? 'Cheek shades include skin and makeup; review the results.' :
       'Review the detected lip shades before continuing.');
-  card.append(heading, canvas, hint, controls, detectButton, privacy, extractButton, remove, ref
-    .palette);
+  card.append(heading, canvas, hint, controls, detectButton, detectSkinButton, privacy, extractButton, remove, ref
+  .palette);
   $(kind + '-gallery').append(card);
   sync();
 }
