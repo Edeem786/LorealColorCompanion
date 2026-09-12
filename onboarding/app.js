@@ -149,6 +149,24 @@ async function detectReferenceShades(ref, kind, button) {
   }
 }
 
+async function autoDetect(ref, button, endpoint) {
+  if (saving || ref.frozen) return;
+  button.disabled = true;
+  const original = button.textContent;
+  button.textContent = 'Detecting…';
+  status('Detecting shades…');
+  try {
+    const imageDataUrl = ref.source.toDataURL('image/jpeg', 0.85);
+    const data = await api(endpoint, { image: imageDataUrl, name: ref.name });
+    showReferenceShades(ref, data.shades);
+  } catch (e) {
+    status(e.message);
+  } finally {
+    button.disabled = false;
+    button.textContent = original;
+  }
+}
+
 // This only populates the review UI. Continue is still required to save likes.
 function showReferenceShades(ref, rgbColors) {
   if (ref.frozen || saving) return;
@@ -262,12 +280,14 @@ function renderReference(ref, kind) {
   extractButton.setAttribute('aria-label', 'Extract makeup shades from ' + ref.name);
   extractButton.onclick = () => extract(ref);
   const detectButton = document.createElement('button');
-  const category = $('category').value;
-  detectButton.textContent = 'Auto-detect ' + category + ' shades';
-  detectButton.disabled = !['lip', 'blush'].includes(category);
-  if (detectButton.disabled) detectButton.dataset.saved = 'true';
-  detectButton.setAttribute('aria-label', detectButton.textContent + ' for ' + ref.name);
-  detectButton.onclick = () => detectReferenceShades(ref, kind, detectButton);
+  detectButton.textContent = 'Auto-detect lip shades';
+  detectButton.setAttribute('aria-label', 'Auto-detect lip shades for ' + ref.name);
+  detectButton.onclick = () => autoDetect(ref, detectButton, '/api/detect-lip-shades');
+
+  const detectSkinButton = document.createElement('button');
+  detectSkinButton.textContent = 'Auto-detect skin shades';
+  detectSkinButton.setAttribute('aria-label', 'Auto-detect skin shades for ' + ref.name);
+  detectSkinButton.onclick = () => autoDetect(ref, detectSkinButton, '/api/detect-skin-shades');
   const remove = document.createElement('button');
   remove.textContent = 'Remove reference';
   remove.className = 'secondary';
