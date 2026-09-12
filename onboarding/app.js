@@ -62,7 +62,9 @@ function renderReference(ref, kind) {
       const crop = document.createElement('canvas');
       crop.width = w; crop.height = h;
       crop.getContext('2d').drawImage(ref.source, x, y, w, h, 0, 0, w, h);
-      const imageDataUrl = crop.toDataURL('image/png');
+
+      const imageDataUrl = ref.source.toDataURL('image/jpeg', 0.85);
+      console.log('Data URL length:', imageDataUrl.length, 'bytes (approx)'); // TEMP: remove after checking size
 
       const data = await api('/api/detect-lip-shades', { image: imageDataUrl, name: ref.name });
       showReferenceShades(ref, data.shades);

@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parent
 def create_app(database=DATABASE, *, catalog_directory=CATALOG_DIR, detect_region=None, assess_accessibility=None):
     """Two optional function arguments are the only integration wiring needed."""
     app = Flask(__name__, static_folder=None)
-    app.config["MAX_CONTENT_LENGTH"] = 11 * 1024 * 1024
+    app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024
 
     @app.before_request
     def check_request():
