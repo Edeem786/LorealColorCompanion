@@ -53,14 +53,6 @@ class FaceLandmark(IntEnum):
     RIGHT_UNDER_EYE = 374
 
 
-SKIN_SAMPLE_POINTS = {
-    "left_cheek": FaceLandmark.LEFT_CHEEK,
-    "right_cheek": FaceLandmark.RIGHT_CHEEK,
-    "forehead": FaceLandmark.FOREHEAD_CENTER,
-    "nose_bridge": FaceLandmark.NOSE_BRIDGE,
-    "chin": FaceLandmark.CHIN,
-}
-
 MODEL_PATH = os.path.join(os.path.dirname(__file__), 'face_landmarker.task')
 
 

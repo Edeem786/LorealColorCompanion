@@ -21,6 +21,23 @@ function extract(ref) {
   const extracted = palette(crop.getContext('2d').getImageData(0, 0, crop.width, crop.height).data);
   showReferenceShades(ref, extracted.map(s => s.rgb));
 }
+async function autoDetect(ref, button, endpoint) {
+  if (saving || ref.frozen) return;
+  button.disabled = true;
+  const original = button.textContent;
+  button.textContent = 'Detecting…';
+  status('Detecting shades…');
+  try {
+    const imageDataUrl = ref.source.toDataURL('image/jpeg', 0.85);
+    const data = await api(endpoint, { image: imageDataUrl, name: ref.name });
+    showReferenceShades(ref, data.shades);
+  } catch (e) {
+    status(e.message);
+  } finally {
+    button.disabled = false;
+    button.textContent = original;
+  }
+}
 // Future detector response: showReferenceShades(ref, response.shades).
 // This only populates the review UI. Continue is still required to save likes.
 function showReferenceShades(ref, rgbColors) {
@@ -43,43 +60,20 @@ function renderReference(ref, kind) {
   // Placeholder only: no handler, image upload, or automatic ratings.
   const detectButton = document.createElement('button');
   detectButton.textContent = 'Auto-detect lip shades';
-  detectButton.disabled = false;
-  detectButton.dataset.saved = 'true'; // Keep disabled when save controls unlock.
-  detectButton.setAttribute('aria-label', 'Auto-detect lip shades for ' + ref.name + ' (coming soon)');
-  detectButton.onclick = async () => {
-    if (saving || ref.frozen) return;
-    detectButton.disabled = true;
-    const original = detectButton.textContent;
-    detectButton.textContent = 'Detecting…';
-    status('Detecting lip shades…');
-    try {
-      // crop the selected region to a canvas, matching what extract() does
-      const b = ref.box;
-      const x = Math.floor(b.left * ref.source.width / 100);
-      const y = Math.floor(b.top * ref.source.height / 100);
-      const w = Math.max(1, Math.floor(b.width * ref.source.width / 100));
-      const h = Math.max(1, Math.floor(b.height * ref.source.height / 100));
-      const crop = document.createElement('canvas');
-      crop.width = w; crop.height = h;
-      crop.getContext('2d').drawImage(ref.source, x, y, w, h, 0, 0, w, h);
+  detectButton.setAttribute('aria-label', 'Auto-detect lip shades for ' + ref.name);
+  detectButton.onclick = () => autoDetect(ref, detectButton, '/api/detect-lip-shades');
 
-      const imageDataUrl = ref.source.toDataURL('image/jpeg', 0.85);
-      console.log('Data URL length:', imageDataUrl.length, 'bytes (approx)'); // TEMP: remove after checking size
+  const detectSkinButton = document.createElement('button');
+  detectSkinButton.textContent = 'Auto-detect skin shades';
+  detectSkinButton.setAttribute('aria-label', 'Auto-detect skin shades for ' + ref.name);
+  detectSkinButton.onclick = () => autoDetect(ref, detectSkinButton, '/api/detect-skin-shades');
 
-      const data = await api('/api/detect-lip-shades', { image: imageDataUrl, name: ref.name });
-      showReferenceShades(ref, data.shades);
-    } catch (e) {
-      status(e.message);
-    } finally {
-      detectButton.disabled = false;
-      detectButton.textContent = original;
-    }
-  };
   const remove = document.createElement('button'); remove.textContent = 'Remove reference'; remove.className = 'secondary'; remove.onclick = () => { sets[kind] = sets[kind].filter(r => r !== ref); card.remove(); updateButtons(); };
   ref.palette = document.createElement('div'); ref.palette.className = 'palette'; const hint = document.createElement('p'); hint.className = 'hint'; hint.textContent = 'Drag over the selected makeup or adjust the crop sliders, then extract shades.';
   const privacy = document.createElement('p'); privacy.className = 'hint';
   privacy.textContent = 'Auto-detection is coming soon. For now, select a rectangle and extract lip shades manually.';
   card.append(heading, canvas, hint, controls, detectButton, privacy, extractButton, remove, ref.palette); $(kind + '-gallery').append(card); sync();
+  card.append(heading, canvas, hint, controls, detectButton, detectSkinButton, privacy, extractButton, remove, ref.palette);
 }
 async function loadFiles(kind, files) {
   if (loading || saving) return; loading = true; const ticket = revision; updateButtons(); const errors = [];
