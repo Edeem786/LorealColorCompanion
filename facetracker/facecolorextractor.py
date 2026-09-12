@@ -85,7 +85,7 @@ def get_landmarks(image, model_path=None):
     base_options = python.BaseOptions(model_asset_path=str(model_path))
     options = vision.FaceLandmarkerOptions(
         base_options=base_options,
-        num_faces=1
+        num_faces=2
     )
     mp_image = mp.Image(image_format=mp.ImageFormat.SRGB,
                          data=cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
@@ -93,7 +93,7 @@ def get_landmarks(image, model_path=None):
     with vision.FaceLandmarker.create_from_options(options) as detector:
         result = detector.detect(mp_image)
 
-    if not result.face_landmarks:
+    if len(result.face_landmarks) != 1:
         return None
 
     h, w = image.shape[:2]

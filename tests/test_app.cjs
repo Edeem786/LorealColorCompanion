@@ -30,9 +30,17 @@ async function main() {
   element('user').value = 'frontend-test';
   element('add-aesthetic').value = 'no';
   const requests = [];
+  let finishDetection;
   const context = vm.createContext({
+    crypto: require('node:crypto').webcrypto,
+    FormData: class { append() {} },
     document: {getElementById: element, createElement: () => new Element(), querySelectorAll: () => []},
     fetch: async (url, options) => {
+      if (url === '/api/detect-shades') {
+        return new Promise(resolve => { finishDetection = shades => resolve({
+          ok: true, json: async () => ({shades})
+        }); });
+      }
       const body = options ? JSON.parse(options.body) : null;
       requests.push({url, body});
       const data = url === '/api/catalogs' ? {catalogs: [{category: 'blush', count: 26}]} :
@@ -43,6 +51,7 @@ async function main() {
       return {ok: true, json: async () => data};
     },
   });
+  vm.runInContext(fs.readFileSync('onboarding/colors.js', 'utf8'), context);
   vm.runInContext(fs.readFileSync('onboarding/app.js', 'utf8'), context);
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(element('category').value, 'blush');
@@ -75,6 +84,28 @@ async function main() {
   element('category').onchange();
   assert.equal(element('personal-stage').hidden, false);
   assert.equal(vm.runInContext('sets.personal.length', context), 0);
+  vm.runInContext(`
+    const detectionRef = {
+      name: 'photo', shades: [], frozen: false,
+      source: {toBlob: callback => callback({})},
+      palette: document.createElement('div')
+    };
+    sets.personal.push(detectionRef);
+    const detectionButton = document.createElement('button');
+  `, context);
+  let pending = vm.runInContext("detectReferenceShades(detectionRef, 'personal', detectionButton)", context);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(element('personal-next').disabled, true);
+  finishDetection([[180, 80, 100]]);
+  await pending;
+  assert.equal(vm.runInContext('detectionRef.shades.length', context), 1);
+  assert.equal(requests.filter(r => r.url === '/api/rating').length, 1, 'Detection must not save ratings');
+  pending = vm.runInContext("detectReferenceShades(detectionRef, 'personal', detectionButton)", context);
+  await new Promise(resolve => setImmediate(resolve));
+  vm.runInContext('clearExtraction(detectionRef)', context);
+  finishDetection([[1, 2, 3]]);
+  await pending;
+  assert.equal(vm.runInContext('detectionRef.shades.length', context), 0, 'Ignore results after crop changes');
   console.log('Frontend initialization, navigation, save retries, and recommendation rendering passed.');
 }
 

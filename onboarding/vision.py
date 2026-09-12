@@ -1,6 +1,6 @@
 """Teammate shade extraction. Requires optional CV dependencies and model file.
 
-Not connected to the UI yet; the manual flow does not import this module.
+Loaded only when the user requests automatic detection.
 """
 from facetracker.facecolorextractor import find_color, FaceLandmark
 
@@ -24,6 +24,15 @@ EYE_SAMPLE_POINTS = {
     "left_iris": FaceLandmark.LEFT_IRIS_CENTER,
     "right_iris": FaceLandmark.RIGHT_IRIS_CENTER,
 }
+
+
+def detect_blush_shades(image_bytes: bytes) -> list[list[int]]:
+    """Sample cheek appearance, including skin and blush; not isolated pigment."""
+    results = find_color(image_bytes, {
+        "left_cheek": FaceLandmark.LEFT_CHEEK,
+        "right_cheek": FaceLandmark.RIGHT_CHEEK,
+    })
+    return _dedupe_shades([r["color_rgb"] for r in results]) if results else []
 
 
 def detect_skin_shades(image_bytes: bytes) -> list[list[int]]:

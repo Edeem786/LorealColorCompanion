@@ -55,9 +55,10 @@ function selected(kind) {
 }
 // Enable/disable controls during uploads and saves.
 function updateButtons() {
-  $('personal-next').disabled = loading || saving || !selected('personal').length || sets.personal
+  const detecting = [...sets.personal, ...sets.aesthetic].some(ref => ref.detecting);
+  $('personal-next').disabled = loading || saving || detecting || !selected('personal').length || sets.personal
     .some(r => !r.shades.length);
-  $('aesthetic-next').disabled = loading || saving || ($('add-aesthetic').value === 'yes' && (!
+  $('aesthetic-next').disabled = loading || saving || detecting || ($('add-aesthetic').value === 'yes' && (!
     selected('aesthetic').length || sets.aesthetic.some(r => !r.shades.length)));
   $('aesthetic-next').textContent = $('add-aesthetic').value === 'yes' ?
     'Use these aesthetic shades & continue' : 'Continue with just my preferences';
@@ -90,6 +91,7 @@ function preview(ref) {
 }
 
 function clearExtraction(ref) {
+  ref.extractionVersion = (ref.extractionVersion || 0) + 1;
   ref.shades = [];
   ref.palette.replaceChildren();
   updateButtons();
@@ -97,6 +99,7 @@ function clearExtraction(ref) {
 }
 
 function extract(ref) {
+  ref.extractionVersion = (ref.extractionVersion || 0) + 1;
   const b = ref.box,
     crop = document.createElement('canvas'),
     x = Math.floor(b.left * ref.source.width / 100),
@@ -109,7 +112,43 @@ function extract(ref) {
   const extracted = palette(crop.getContext('2d').getImageData(0, 0, crop.width, crop.height).data);
   showReferenceShades(ref, extracted.map(s => s.rgb));
 }
-// Future detector response: showReferenceShades(ref, response.shades).
+// Send the full resized photo only when automatic detection is requested.
+async function detectReferenceShades(ref, kind, button) {
+  if (saving || ref.frozen || ref.detecting) return;
+  const pageVersion = revision;
+  const extractionVersion = ref.extractionVersion = (ref.extractionVersion || 0) + 1;
+  const category = $('category').value;
+  const isCurrent = () => pageVersion === revision && sets[kind].includes(ref) &&
+    extractionVersion === ref.extractionVersion && !ref.frozen && !saving;
+  ref.detecting = true;
+  button.disabled = true;
+  updateButtons();
+  status('Detecting shades in ' + ref.name + '…');
+  try {
+    const blob = await new Promise(resolve => ref.source.toBlob(resolve, 'image/png'));
+    if (!isCurrent()) return;
+    if (!blob) throw Error('Could not prepare the image. Try manual extraction.');
+    const body = new FormData();
+    body.append('image', blob, 'reference.png');
+    body.append('category', category);
+    const response = await fetch('/api/detect-shades', {method: 'POST', body});
+    const data = await response.json();
+    if (!isCurrent()) return;
+    if (!response.ok) throw Error(data.error || 'Detection failed. Try manual extraction.');
+    if (Array.isArray(data.shades) && data.shades.length === 0) {
+      status('No usable shades found. Use a clear photo of one face or extract shades manually.');
+      return;
+    }
+    showReferenceShades(ref, data.shades);
+  } catch (error) {
+    if (isCurrent()) status(error.message);
+  } finally {
+    ref.detecting = false;
+    button.disabled = saving || ref.frozen;
+    updateButtons();
+  }
+}
+
 // This only populates the review UI. Continue is still required to save likes.
 function showReferenceShades(ref, rgbColors) {
   if (ref.frozen || saving) return;
@@ -222,13 +261,13 @@ function renderReference(ref, kind) {
   extractButton.textContent = 'Extract makeup shades';
   extractButton.setAttribute('aria-label', 'Extract makeup shades from ' + ref.name);
   extractButton.onclick = () => extract(ref);
-  // Placeholder only: no handler, image upload, or automatic ratings.
   const detectButton = document.createElement('button');
-  detectButton.textContent = 'Auto-detect lip shades';
-  detectButton.disabled = true;
-  detectButton.dataset.saved = 'true'; // Keep disabled when save controls unlock.
-  detectButton.setAttribute('aria-label', 'Auto-detect lip shades for ' + ref.name +
-    ' (coming soon)');
+  const category = $('category').value;
+  detectButton.textContent = 'Auto-detect ' + category + ' shades';
+  detectButton.disabled = !['lip', 'blush'].includes(category);
+  if (detectButton.disabled) detectButton.dataset.saved = 'true';
+  detectButton.setAttribute('aria-label', detectButton.textContent + ' for ' + ref.name);
+  detectButton.onclick = () => detectReferenceShades(ref, kind, detectButton);
   const remove = document.createElement('button');
   remove.textContent = 'Remove reference';
   remove.className = 'secondary';
@@ -246,7 +285,9 @@ function renderReference(ref, kind) {
   const privacy = document.createElement('p');
   privacy.className = 'hint';
   privacy.textContent =
-    'Auto-detection is coming soon. For now, select a rectangle and extract lip shades manually.';
+    'Auto-detection sends this resized photo to the app server for processing. Photos are not saved. ' +
+    (category === 'blush' ? 'Cheek shades include skin and makeup; review the results.' :
+      'Review the detected lip shades before continuing.');
   card.append(heading, canvas, hint, controls, detectButton, privacy, extractButton, remove, ref
     .palette);
   $(kind + '-gallery').append(card);
