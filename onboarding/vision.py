@@ -1,14 +1,8 @@
-"""Teammate-owned lip shade detection. Not connected to the UI yet."""
+"""Teammate shade extraction. Requires optional CV dependencies and model file.
 
-import sys
-import os
-import tempfile
-
-# Make the sibling facetracker/ folder importable
-FACETRACKER_DIR = os.path.join(os.path.dirname(__file__), "..", "facetracker")
-sys.path.append(os.path.abspath(FACETRACKER_DIR))
-
-from facecolorextractor import find_color, FaceLandmark
+Loaded only when the user requests automatic detection.
+"""
+from facetracker.facecolorextractor import find_color, FaceLandmark
 
 # Predefined points
 LIP_SAMPLE_POINTS = {
@@ -30,6 +24,15 @@ EYE_SAMPLE_POINTS = {
     "left_iris": FaceLandmark.LEFT_IRIS_CENTER,
     "right_iris": FaceLandmark.RIGHT_IRIS_CENTER,
 }
+
+
+def detect_blush_shades(image_bytes: bytes) -> list[list[int]]:
+    """Sample cheek appearance, including skin and blush; not isolated pigment."""
+    results = find_color(image_bytes, {
+        "left_cheek": FaceLandmark.LEFT_CHEEK,
+        "right_cheek": FaceLandmark.RIGHT_CHEEK,
+    })
+    return _dedupe_shades([r["color_rgb"] for r in results]) if results else []
 
 
 def detect_skin_shades(image_bytes: bytes) -> list[list[int]]:
@@ -63,7 +66,6 @@ def detect_lip_shades(image_bytes: bytes) -> list[list[int]]:
         return []
     shades = [r["color_rgb"] for r in results]
     return _dedupe_shades(shades)
-    raise NotImplementedError("Lip shade detection will be implemented by the CV teammate.")
 
 
 def detect_eye_shades(image_bytes: bytes) -> list[list[int]]:

@@ -2,9 +2,9 @@
 
 ## Current status
 
-The UI keeps manual rectangle selection and **Extract lip shades**. Every reference also shows a disabled **Auto-detect lip shades** placeholder. It has no click handler, makes no network request, and saves nothing. The CV teammate will implement detection AND shade extraction, not just a rectangle.
+The UI now supports manual extraction and automatic lip/blush detection in both reference sets. Clicking Auto-detect sends the resized photo to Flask, without saving the image. Detection fills review checkboxes; Continue saves likes.
 
-`onboarding/vision.py` contains the unimplemented `detect_lip_shades(image_bytes)` function. It deliberately raises `NotImplementedError`. It is not imported or called by the live app.
+`onboarding/vision.py` provides lip extraction and a cheek-only blush sampler. Blush samples visible skin-plus-makeup appearance, not isolated pigment. Skin and iris helpers remain separate. Install the optional `requirements-vision.txt` dependencies in the teammate's compatible environment and supply `facetracker/face_landmarker.task`. Real model detection remains unvalidated here because those dependencies and the model are missing. Missing setup produces a manual fallback message.
 
 ## RGB contract
 
@@ -20,16 +20,15 @@ RGB is sufficient for this MVP. A bounding box, mask, confidence and pixel cover
 
 The proposed request supplies the oriented, resized **full reference image as PNG bytes**. The detector owns image decoding, lip segmentation and shade extraction. Inspect the resized input quality when integrating; the current browser limits the long edge to 800 pixels. If the model needs higher resolution, agree on that before changing the upload contract.
 
-## How to connect it later
+## How to change the detector
 
-1. Implement `detect_lip_shades(image_bytes)` in `onboarding/vision.py`, or wrap your existing model with that signature.
-2. Add a Flask `POST /api/detect-lip-shades` route accepting multipart field `image`. Decode/validate the PNG, enforce a size limit, call the function and return `{"shades": [[180, 80, 100]]}`. This route does **not** exist yet. Add it to the image-upload exception in `check_request` so the 100 KB JSON limit does not incorrectly apply. Retain the 10 MB image limit.
-3. Enable the placeholder in `renderReference` in `onboarding/app.js`: remove its permanent disabled marker and add a handler. Convert `ref.source` to a PNG Blob and send it with `FormData`. Disclose the image transfer before enabling the feature. No original image is sent by today's placeholder.
-4. Pass the response to `showReferenceShades(ref, response.shades)`. This existing helper validates RGB, converts it to OKLab using `shadesFromRgb`, and fills the same checkboxes used by manual extraction. The user still reviews shades and clicks Continue before likes are saved.
-5. Disable the button while processing. Ignore stale responses if the user changes profile, removes the reference, starts another extraction, or confirms the set. On no detection/error keep manual cropping available and explain what happened. Avoid replacing a manual review with an empty/error result.
-6. Test one shade, multiple shades, no lips, invalid output, model failure and user changes during a request. Check that detection alone creates no rating events.
+1. Update `detect_lip_shades` or `detect_blush_shades` in `onboarding/vision.py`, preserving the RGB contract. Imports are lazy so manual use does not require CV packages.
+2. Alternatively pass `create_app(detect_shades=your_function)`. It takes `(image_bytes, category)` and returns the RGB list.
+3. `POST /api/detect-shades` accepts multipart fields `image` (PNG) and `category` (`lip` or `blush`). It checks upload size, PNG header/dimensions (up to 800 pixels per side) and returned RGB values. The detector decodes the image. Success returns `{"shades": [...]}`; setup or detector failure returns a 503 error with manual fallback guidance.
+4. `detectReferenceShades` uploads and populates `showReferenceShades`. Empty/error results preserve existing shades. Responses are ignored after removal, manual extraction, crop changes, profile/category changes or freezing. No ratings are created by detection.
+5. Validate actual photos in the teammate's environment. The landmark detector accepts exactly one face, rejecting no-face and multiple-face results.
 
-The earlier rectangle-only `/api/detect-region` endpoint and `MakeupRegion` type remain for backwards compatibility and existing tests, but the new UI does not call them. They are not needed for this shade-output integration.
+The old rectangle-only `/api/detect-region` route remains for compatibility, unused by the UI. Experimental `colormatcher` functions remain separate from preference ranking.
 
 ## Manual extraction explained
 
@@ -84,4 +83,4 @@ if __name__ == "__main__":
     app.run(host="127.0.0.1", port=8000)
 ```
 
-Replace the example CVD module name with the actual module. The shade-detector route described above is a separate future change. No model implementation, automatic rating creation, new database or additional framework is needed in this skeleton.
+Replace the example CVD module name with the actual module. Shade detection is connected independently through `/api/detect-shades`. The pulled vision implementation still needs validation; connecting it does not require a new database or additional framework, and detection should not automatically create ratings.
