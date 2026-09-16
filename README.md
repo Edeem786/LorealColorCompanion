@@ -10,7 +10,7 @@ The site now uses Flask; the core preference model still uses only the standard 
 
 `requirements.txt` installs only Flask and its dependencies for the current site. The pulled face-extractor dependency pins are preserved separately in `requirements-vision.txt`; they are optional and have not been validated in this machine's MSYS2 Python environment. The CV teammate also needs to supply `facetracker/face_landmarker.task` (ignored by Git). The detector now resolves this path relative to its module rather than the terminal's working directory. Automatic lip and blush extraction is now connected. It requires the optional vision setup; the new `colormatcher` functions remain unused.
 
-Frontend code is kept in one readable `onboarding/app.js`, grouped into state/helpers, crop and shade review, reference cards, file loading, saving, navigation, and recommendation rendering. `continuePersonalReferences`, `continueAestheticReferences`, and `requestRecommendations` are the main button handlers. `renderRecommendations` builds the result cards. Shared helpers used by `cvd-form.js` remain unchanged. Run `node tests/test_app.cjs` for lightweight frontend behavior checks, alongside the Python suite and `node tests/test_colors.cjs`.
+Frontend code is kept in one readable `onboarding/app.js`, grouped into state/helpers, crop and shade review, reference cards, file loading, saving, navigation, and recommendation rendering. `continuePersonalReferences`, `continueAestheticReferences`, and `requestRecommendations` are the main button handlers. `renderRecommendations` builds the result cards. Shared helpers also support `cvd-form.js`. Run `node tests/test_app.cjs` for lightweight frontend behavior checks, alongside the Python suite and `node tests/test_colors.cjs`.
 
 On a standard Windows Python installation:
 
@@ -55,41 +55,92 @@ Here, `python` must be the interpreter that will run Flask. The vision dependenc
 
 The frontend and server are connected, and automated tests cover the integration contract and stale-response handling. Actual photo detection still needs validation with the CV dependencies and model installed. See [INTEGRATION.md](INTEGRATION.md) for the RGB output contract and how to replace the detector.
 
-## Weighted suggestions
+## Recommendation engine
 
-`rank_weighted` scores both profiles separately, then uses:
+There is one public ranking method: `PreferenceService.recommend()`. It scores every supplied product and sorts the results. With no aesthetic references it uses personal preferences only; with an aesthetic profile it combines the two scores using the chosen weight.
 
 ```text
 score = personal_weight * personal_score
       + (1 - personal_weight) * aesthetic_score
 ```
 
-It sorts by the weighted score, not by an intersection-first rule. This permits a user-chosen tradeoff; a positive combined score does not establish that both parties like the shade. Results with positive nearby evidence in both profiles are labeled accordingly. If a profile with nonzero weight lacks nearby evidence, the blended score is `null` and is listed after scored candidates. A zero-weight profile cannot block a result. Nearby evidence means at least one explicit liked or disliked reference lies inside the local support radius (`2 * bandwidth`, currently 0.2 OKLab units). This is a prototype cutoff, not calibrated confidence. Missing aesthetic history forces 100% personal; omitting the second set in the UI also ignores any prior aesthetic history.
+A profile with nonzero weight must have nearby evidence; otherwise the combined score is `null` (Python `None`) and sorts after known results. Missing aesthetic history forces 100% personal. Positive scores on both sides set `shared_match` to true. This is heuristic support, not verified audience approval or a probability.
+
+The website loads products from `catalogs/<category>.json` and displays the top 12. Add products using [catalogs/README.md](catalogs/README.md). Changing category clears current reference images; saved feedback remains separated by category.
+
+## Use from another Python program
+
+Run from the repository root. The preference engine uses Python's standard library and SQLite; it does not require Flask or CV packages.
 
 ```python
-result = model.rank_weighted(
-    "alice", "lip", candidates, personal_weight=0.6,
-    environment_profile_id="environment:Friends",
-)
+from preference import PreferenceService, SQLiteStorage
+
+with SQLiteStorage(":memory:") as storage:
+    service = PreferenceService(storage, bandwidth=0.1)
+    service.add_rating("alice", "lip", [0.7, 0.12, 0.04], 1)
+    service.add_rating("alice", "lip", [0.65, 0.1, 0.03], 1,
+                       preference_profile_id="environment:Friends")
+
+    products = [
+        {"name": "Rose", "color": [0.7, 0.12, 0.04]},
+        {"name": "Soft rose", "color": [0.65, 0.1, 0.03]},
+    ]
+    result = service.recommend(
+        "alice", "lip", products,
+        personal_weight=0.6,
+        environment_profile_id="environment:Friends",
+    )
+    for product in result["results"]:
+        print(product["name"], product["score"])
 ```
 
-`result` contains ranked `results`, the effective weights and rating counts. Each candidate contains its score, both evidence explanations, and a shared-match flag. `/api/rank` accepts `mode: "weighted"`, `personal_weight` (0–1), and optional `environment_profile_id`. The older `personal` and `shared` modes remain available for callers; `rank_shared` still implements the earlier minimum-score intersection heuristic.
+Use a filename instead of `:memory:` to persist feedback. Repeating `add_rating()` appends events unless you reuse the optional `event_id` for an identical request. A reused ID with different feedback is rejected. The website requires an event ID so network retries cannot duplicate ratings.
 
-The site now recommends products from `catalogs/<category>.json`, showing the top 12 with product names, shade names and estimated previews. The supplied 26-item blush list is in `catalogs/blush.json`; `catalogs/lip.json` contains the supplied 52 lipsticks (source category `lipstick` mapped to `lip`). Add more files using the format in [catalogs/README.md](catalogs/README.md), then refresh the browser. Empty categories are disabled. Switching category clears the current reference session; saved ratings remain separated by category.
+Colors must be finite normalized **OKLab** triplets (`L` in 0..1), not RGB or CIELAB. Ratings are `1` for like or `-1` for dislike. The browser currently collects likes only; unchecked shades are ignored. Each history is identified by user, category, and preference profile. `add_rating()` defaults to `personal`; aesthetic ratings use the profile name supplied to `recommend()`.
 
-`GET /api/catalogs` lists available categories and counts. `POST /api/recommend` accepts the usual user/profile weights plus `category`; it loads candidates on the server and ignores any client-supplied candidates. The existing `/api/rank` remains available for testing arbitrary colors. Both support up to 1,000 candidates. `/api/rating` now accepts `category` (legacy default `lip`). The site explicitly supplies its selected category, and the CVD adapter receives that category too.
+`recommend()` returns a dictionary with `results`, effective weights and rating counts. Each product retains its metadata and gains its combined score, separate personal/environment explanations, and status. For a single color, pass a one-item product list. To read saved events directly, use `storage.get_ratings(user_id, category, preference_profile_id)`.
 
-Catalog colors are treated as normalized OKLab and retained exactly as supplied. Their source is estimated, not independently measured. CSS OKLab swatches are approximate and may clip colors outside the display gamut. Catalog inclusion is not live availability verification. Unknown/distant evidence remains unknown, rather than inventing a confident recommendation. The model still evaluates individual colors, not complete-look compatibility. CVD stays separate.
+## How scoring works
 
-## Profiles and local operation
+`_score_color()` is the private calculation used for both profiles. It compares one product against every relevant rating:
 
-Core rating, comparison, prediction and profile methods accept `preference_profile_id`, defaulting to `personal`. It is separate from user and makeup category. The UI uses `environment:` plus the trimmed, case-sensitive aesthetic name. Existing databases migrate additively and old feedback becomes personal. `/api/rating` accepts `user_id`, `event_id`, `color`, `rating`, and optional `preference_profile_id`; the browser confirms positive ratings, while the core still supports dislikes and comparisons.
+```text
+distance = Euclidean distance in OKLab
+similarity = exp(-0.5 * (distance / bandwidth)^2) if distance < 2 * bandwidth else 0
+score = strongest liked similarity - strongest disliked similarity
+```
 
-This is a loopback-only local prototype with no authentication. Labels, keyboard crop controls and live feedback support accessible operation; it has not undergone a full accessibility evaluation. Optional JavaScript checks: `node tests/test_colors.cjs`. Node is not required to run the app.
+An empty side contributes zero. Each reference supports its own local neighborhood; unrelated favorites and duplicate likes do not dilute or amplify a match. Liking black and white does not imply liking gray. Close neighborhoods can overlap, and an unsupported color is unknown rather than disliked.
 
-## Tests and core demo
+The default bandwidth is 0.1 and support ends at distance 0.2. This hard cutoff is a prototype parameter requiring user evaluation, not a perceptual indistinguishability threshold. Explanations show at most one nearest reference per side, its similarity and distance, plus saved event counts. A nearest reference can still be outside the cutoff with zero support. Scores range from -1 to 1; they are not probabilities.
 
-Use Python 3.10 or newer from the repository root. Install requirements.txt in your virtual environment first; Flask is needed for web tests.
+CVD simulation is not yet applied to personal scoring. The proposed next change is to compare simulated product/reference colors for personal taste while keeping aesthetic comparisons in original OKLab. Original stored colors should remain unchanged.
+
+## Website API
+
+- `POST /api/rating`: save a rating with `user_id`, `category`, `color`, `rating`, `event_id`, and optional `preference_profile_id`.
+- `POST /api/recommend`: send `user_id`, `category`, optional `personal_weight` and `environment_profile_id`. Products are loaded server-side; client-supplied products are ignored.
+- `GET /api/catalogs`: available categories and product counts.
+- `GET /api/cvd-profile` and `POST /api/cvd-profile`: read/save diagnosis details separately.
+
+Flask calls the service directly. There is no dispatcher or ranking mode selector. The old `/api/rank` endpoint and old scoring/ranking methods have been removed; Python callers should use `recommend()` for custom product lists. The engine accepts up to 1,000 candidates.
+
+## Files to follow
+
+- `onboarding/app.js`: sends save/recommendation requests and displays results.
+- `onboarding/server.py`: Flask routes calling the service.
+- `preference/service.py`: `add_rating()`, `recommend()`, and private `_score_color()`.
+- `preference/storage.py`: SQLite ratings, additive migration, and safe event retries.
+- `preference/models.py`: rating record and input validation.
+- `preference/distance.py`: Euclidean color distance.
+- `onboarding/catalog.py`: loads product JSON.
+- `onboarding/vision.py` and `facetracker/`: extraction wrappers and teammate CV implementation.
+- `onboarding/cvd_profile.py` and `cvd-form.js`: diagnosis storage and form.
+- `colormatcher/`: experimental color and CVD functions, separate from current ranking.
+
+There is no longer an `onboarding/actions.py`. Comparison and profile-snapshot methods were removed because the current app does not need them. Existing comparison tables in old databases are left untouched; new databases do not create them. Existing ratings, CVD profiles and retry records are preserved. No database reset is needed.
+
+## Checks
 
 With your virtual environment active:
 
@@ -100,89 +151,10 @@ node tests/test_app.cjs
 node tests/test_colors.cjs
 ```
 
-Node is needed only for the JavaScript checks. These tests do not require the CV model and do not validate real photograph extraction quality.
+Node is only needed for the frontend checks. Tests cover scoring, profile separation, weights, request validation, retry protection and old-database preservation. They do not establish real-world CV extraction accuracy or preference prediction quality.
 
-## API
+## Limits
 
-```python
-from preference import PreferenceService, SQLiteStorage
+This is a local prototype without authentication. SQLite stores feedback and diagnosis details locally; images are not stored. Product colors are estimated and previews may differ from real products. Ranking compares individual color appearances, not finish, skin suitability, availability, or complete-look compatibility. Photo lighting and skin influence extracted colors. An isolated noisy reference can dominate a match.
 
-with SQLiteStorage("data/preferences.db") as storage:
-    model = PreferenceService(storage, bandwidth=0.1, neighbors=3)
-    model.add_rating("user-1", category="blush", color=[0.7, 0.12, 0.04], rating=1)
-    model.add_rating("user-1", category="blush", color=[0.5, 0.25, 0.15], rating=-1)
-    model.add_comparison(
-        "user-1", category="lip",
-        color_a=[0.6, 0.1, 0.04], color_b=[0.4, 0.2, 0.1], preferred="a",
-    )
-    score = model.predict_preference("user-1", "blush", [0.71, 0.12, 0.05])
-    explanation = model.explain_preference("user-1", "blush", [0.71, 0.12, 0.05])
-    ranked = model.rank_colors("user-1", "blush", [
-        {"name": "Sample 01", "color": [0.71, 0.12, 0.05], "finish": "matte"},
-        {"name": "Sample 02", "color": [0.51, 0.24, 0.15]},
-    ])
-    profile = model.get_profile("user-1")
-    liked = profile.categories["blush"].liked_colors
-```
-
-Colors must be three finite numeric components in **normalized OKLab** (`L` from 0 to 1). The `a` and `b` axes may be negative. The Python preference API expects OKLab directly; the browser converts extracted sRGB values in `onboarding/colors.js`. The core does not validate display gamut. Do not pass CIELAB or RGB values as OKLab. Categories are arbitrary nonempty, case-sensitive strings representing makeup roles; callers should use consistent identifiers such as `lip`, `blush`, `eyeshadow`, and `foundation`. They are not color labels.
-
-`predict_preference` returns a float in [-1, 1]. Positive means evidence toward liking; negative means evidence toward disliking. This is **not a probability**. Zero can indicate no feedback, distant evidence, or a balance of conflicting feedback.
-
-`explain_preference` returns `score`, a human-readable `reason` list, and `evidence`. For liked and disliked evidence separately, it reports the total rating count, number used for scoring (zero or one), strongest similarity, and selected examples with distance, similarity, and UTC timestamp. `rank_colors` preserves candidate metadata, adds these fields, and sorts descending; ties retain input order. Existing `score`, `reason`, and `evidence` fields are replaced. Other metadata is not used to score.
-
-## Heuristic
-
-Each reference supports a separate local neighborhood. For a candidate, compare only that user's explicit ratings in the requested category and preference profile:
-
-```text
-distance = sqrt((L1-L2)^2 + (a1-a2)^2 + (b1-b2)^2)
-support_radius = 2 * bandwidth
-similarity = exp(-0.5 * (distance / bandwidth)^2) if distance < support_radius else 0
-score = max(liked similarities, default=0) - max(disliked similarities, default=0)
-```
-
-Only the strongest match on each side contributes. Adding unrelated favorites or repeating the same rating does not dilute or amplify an existing match. Liking black and white does not imply liking gray: a gray outside both neighborhoods has no support. Close neighborhoods can overlap; the algorithm does not learn a disliked gap without explicit feedback.
-
-The current reference UI collects **likes only**. Unchecked shades are ignored, not disliked. With no dislikes, the score is simply the strongest local liked match. Explicit dislikes remain supported through the Python/API for existing data and future feedback UI. Unsupported colors are unknown, not negative preferences: the core returns score zero with `has_nearby_evidence: false`, and the weighted recommendation endpoint returns `score: null` when an active profile lacks support.
-
-Default `bandwidth=0.1` sets the fade and a strict 0.2 OKLab support radius. Similarity drops to zero at the boundary; this deliberate hard cutoff and its width need evaluation with user choices. It is not a perceptual indistinguishability threshold. `neighbors=3` now controls only how many nearest examples are displayed, not the score. Evidence exposes `strongest_similarity` (replacing `mean_similarity`), `used_count` (zero or one), `shown_count`, and `nearest`. Explanations distinguish absent support from conflicting explicit likes/dislikes. Scores are not probabilities.
-
-Replace the distance through `PreferenceService(storage, distance=your_function)`. The function accepts two color tuples and must return a finite nonnegative number. Changing metrics requires checking coordinate conventions and retuning bandwidth. CIEDE2000 would require conversion to CIELAB as well as its distance calculation; it cannot consume OKLab directly.
-
-## Structure and storage
-
-- `onboarding/server.py`: Flask routes and optional vision/CVD adapters.
-- `onboarding/app.js`: reference cards, extraction, review, navigation and recommendations.
-- `onboarding/colors.js`: sRGB conversion and manual palette extraction.
-- `onboarding/cvd-form.js` and `onboarding/cvd_profile.py`: diagnosis form and SQLite storage.
-- `onboarding/vision.py`: lip and cheek extraction wrappers.
-- `facetracker/`: teammate landmark and color sampling implementation; model file required.
-- `catalogs/`: product shade JSON files.
-- `colormatcher/`: experimental functions, not used by current recommendations.
-- `preference/models.py`: rating/comparison records and user/category profile snapshots.
-- `preference/storage.py`: SQLite persistence and profile reconstruction.
-- `preference/distance.py`: default distance function.
-- `preference/service.py`: predictions, explanations, and ranking.
-- `tests/`: synthetic behavior and persistence tests.
-
-SQLite contains append-only `ratings` and `comparisons` tables, indexed by `(user_id, category)`. Each event includes user, category, color coordinates, feedback, and a timezone-aware UTC timestamp. Comparisons retain both vectors and the chosen side for future ranking approaches. Choosing A over B does not mean A is liked or B disliked, so comparisons do not currently affect predictions.
-
-Calls commit writes before returning. Unknown users require no registration and receive neutral predictions. Profiles are snapshots; mutating them does not save changes. Repeated ratings are separate evidence and can occupy multiple neighbor slots. Retrying the same event ID does not duplicate a rating, but separate events with identical colors still count separately. There is no revision policy or recency decay. Use the context manager to close connections. Each storage instance is intended for one thread; this is not a service-scale connection pool. Ranking fetches ratings once per call, then scores each candidate. Prediction scans/sorts the relevant history, appropriate for a small prototype.
-
-## Scope and limitations
-
-This predicts preferences for individual colors in a makeup role. It does **not** evaluate complete looks: liking A, B, and C separately does not imply liking them together. The app stores a CVD profile and offers an optional accessibility adapter, but no CVD scoring is connected by default. Aesthetic references represent the user’s estimate of an audience’s taste, not measured audience approval. Ranking does not use skin-tone suitability rules, finish effects, or cross-product compatibility. Foundation suitability in particular cannot be inferred from color liking alone.
-
-Scores depend on bandwidth and sparse/noisy self-reported feedback. Repeated identical events do not change strongest-match scores, although noisy individual references can still dominate a local match. Conflicting feedback is retained and may cancel out. There is no calibrated uncertainty, population prior, or claim of objective attractiveness. Synthetic tests validate behavior, not real-user recommendation quality. SQLite is local, unencrypted storage; user identifiers and feedback remain in the chosen file.
-
-## Future extensions
-
-- Bradley–Terry or another ranking model can learn relative preferences from the stored comparisons.
-- Bayesian preference learning can represent uncertainty and guide which feedback to request.
-- Contextual bandits can explore options with user consent and incorporate occasions or product attributes.
-- Collaborative filtering can use feedback across consenting users once enough data exists, while retaining individual control.
-- Complete-look preferences need separate feedback on combinations, with makeup roles and context recorded.
-- Audience appeal needs actual ratings from a defined audience, with sample counts and uncertainty. It should remain distinct from personal preference and CVD accessibility.
-
-These extensions are intentionally not implemented. Evaluate the heuristic with user feedback before choosing a more complex model.
+The optional accessibility adapter attaches an assessment separately and does not change ranking. CVD severity levels are ordinal labels, not calibrated simulation strengths. See [INTEGRATION.md](INTEGRATION.md) for teammate interfaces.

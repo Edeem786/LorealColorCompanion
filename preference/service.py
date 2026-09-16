@@ -1,50 +1,32 @@
 """Local preference islands: strongest nearby like minus strongest nearby dislike."""
 
 import math
-from typing import Callable
 
 from .distance import euclidean_distance
-from .models import Color, validate_color
+from .models import validate_color
 from .storage import SQLiteStorage
 
 
 class PreferenceService:
-    def __init__(self, storage: SQLiteStorage, *, bandwidth: float = 0.1,
-                 neighbors: int = 3, distance: Callable[[Color, Color], float] = euclidean_distance):
-        if isinstance(bandwidth, bool) or not math.isfinite(bandwidth) or bandwidth <= 0:
+    def __init__(self, storage: SQLiteStorage, *, bandwidth: float = 0.1):
+        if isinstance(bandwidth, bool) or not isinstance(bandwidth, (int, float)) or not math.isfinite(bandwidth) or bandwidth <= 0:
             raise ValueError("bandwidth must be finite and positive.")
-        if isinstance(neighbors, bool) or not isinstance(neighbors, int) or neighbors < 1:
-            raise ValueError("neighbors must be a positive integer.")
         self.storage = storage
         self.bandwidth = bandwidth
-        self.neighbors = neighbors  # Number of examples shown; does not affect scoring.
         self.support_radius = 2 * bandwidth
-        self.distance = distance
 
-    def add_rating(self, user_id, category, color, rating, preference_profile_id="personal"):
-        return self.storage.add_rating(user_id, category, color, rating, preference_profile_id)
+    def add_rating(self, user_id, category, color, rating, preference_profile_id="personal", *, event_id=None):
+        """Save feedback. Reuse event_id when retrying the same browser request."""
+        return self.storage.add_rating(user_id, category, color, rating, preference_profile_id, event_id=event_id)
 
-    def add_comparison(self, user_id, category, color_a, color_b, preferred, preference_profile_id="personal"):
-        return self.storage.add_comparison(user_id, category, color_a, color_b, preferred, preference_profile_id)
-
-    def get_profile(self, user_id, preference_profile_id="personal"):
-        return self.storage.get_profile(user_id, preference_profile_id)
-
-    def predict_preference(self, user_id, category, color_vector, preference_profile_id="personal") -> float:
-        return self.explain_preference(user_id, category, color_vector, preference_profile_id)["score"]
-
-    def explain_preference(self, user_id, category, color_vector, preference_profile_id="personal") -> dict:
-        color = validate_color(color_vector)
-        return self._explain(color, self.storage.get_ratings(user_id, category, preference_profile_id))
-
-    def _explain(self, color, events):
+    def _score_color(self, color, events):
         evidence = {}
         for label, rating in (("liked", 1), ("disliked", -1)):
             matches = []
             for event in events:
                 if event.rating != rating:
                     continue
-                distance = float(self.distance(color, event.color_vector))
+                distance = float(euclidean_distance(color, event.color_vector))
                 if not math.isfinite(distance) or distance < 0:
                     raise ValueError("Distance function must return a finite nonnegative number.")
                 ratio = distance / self.bandwidth
@@ -52,7 +34,7 @@ class PreferenceService:
                 similarity = math.exp(-0.5 * ratio * ratio) if ratio < 2 else 0.0
                 matches.append({"color": list(event.color_vector), "distance": distance,
                                 "similarity": similarity, "timestamp": event.timestamp.isoformat()})
-            nearest = sorted(matches, key=lambda match: match["distance"])[:self.neighbors]
+            nearest = sorted(matches, key=lambda match: match["distance"])[:1]
             strongest = nearest[0]["similarity"] if nearest else 0.0
             evidence[label] = {"total_count": len(matches),
                                "used_count": int(strongest > 0),
@@ -74,41 +56,11 @@ class PreferenceService:
                 "has_nearby_evidence": max(liked, disliked) > 0,
                 "support_radius": self.support_radius}
 
-    def rank_colors(self, user_id, category, candidate_colors, preference_profile_id="personal") -> list[dict]:
-        events = self.storage.get_ratings(user_id, category, preference_profile_id)
-        ranked = []
-        for candidate in candidate_colors:
-            if not isinstance(candidate, dict) or "name" not in candidate or "color" not in candidate:
-                raise ValueError("Each candidate must have name and color fields.")
-            explanation = self._explain(validate_color(candidate["color"]), events)
-            ranked.append({**candidate, **explanation})
-        return sorted(ranked, key=lambda candidate: candidate["score"], reverse=True)
-
-    def rank_shared(self, user_id, category, candidate_colors, environment_profile_id):
-        """Rank shared matches first. Weak/missing evidence has no overlap score."""
-        if environment_profile_id == "personal":
-            raise ValueError("Choose an environment profile distinct from personal.")
-        personal_events = self.storage.get_ratings(user_id, category, "personal")
-        environment_events = self.storage.get_ratings(user_id, category, environment_profile_id)
-        results = []
-        for candidate in candidate_colors:
-            if not isinstance(candidate, dict) or "name" not in candidate or "color" not in candidate:
-                raise ValueError("Each candidate must have name and color fields.")
-            color = validate_color(candidate["color"])
-            personal = self._explain(color, personal_events)
-            environment = self._explain(color, environment_events)
-            known = personal["has_nearby_evidence"] and environment["has_nearby_evidence"]
-            overlap = min(personal["score"], environment["score"]) if known else None
-            shared = known and personal["score"] > 0 and environment["score"] > 0
-            results.append({**candidate, "personal": personal, "environment": environment,
-                            "overlap_score": overlap, "shared_match": shared,
-                            "status": "shared_match" if shared else "no_shared_match" if known else "insufficient_evidence"})
-        return sorted(results, key=lambda item: (item["shared_match"], item["overlap_score"] is not None,
-                                                item["overlap_score"] if item["overlap_score"] is not None else 0), reverse=True)
-
-    def rank_weighted(self, user_id, category, candidate_colors, *, personal_weight=1.0,
+    def recommend(self, user_id, category, candidate_colors, *, personal_weight=1.0,
                       environment_profile_id=None):
         """User-controlled tradeoff; unknown active evidence has no blended score."""
+        if not isinstance(candidate_colors, list) or len(candidate_colors) > 1000:
+            raise ValueError("Provide up to 1000 candidates.")
         if (isinstance(personal_weight, bool) or not isinstance(personal_weight, (int, float))
                 or not math.isfinite(personal_weight) or not 0 <= personal_weight <= 1):
             raise ValueError("personal_weight must be a number between 0 and 1.")
@@ -123,7 +75,7 @@ class PreferenceService:
             if not isinstance(candidate, dict) or "name" not in candidate or "color" not in candidate:
                 raise ValueError("Each candidate must have name and color fields.")
             color = validate_color(candidate["color"])
-            personal, environment = self._explain(color, personal_events), self._explain(color, environment_events)
+            personal, environment = self._score_color(color, personal_events), self._score_color(color, environment_events)
             known = ((weight == 0 or personal["has_nearby_evidence"])
                      and (weight == 1 or environment["has_nearby_evidence"]))
             score = weight * personal["score"] + (1 - weight) * environment["score"] if known else None

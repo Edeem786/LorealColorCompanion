@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 import sqlite3
 from pathlib import Path
 from preference.models import validate_key
-from .actions import DATABASE
+from preference.storage import DATABASE
 
 # Ordinal encoding, not a clinical measurement or a 0–1 simulation strength.
 SEVERITY_LEVELS = {'mild': 1, 'moderate': 2, 'severe': 3}

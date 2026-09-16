@@ -24,7 +24,7 @@ class CatalogTests(unittest.TestCase):
             color=load_catalog('blush')[0]['color']
             rating={'user_id':'u','event_id':'lip-rating','color':color,'rating':1,'category':'lip'}
             self.assertEqual(client.post('/api/rating',json=rating).status_code,200)
-            request={'user_id':'u','category':'blush','mode':'weighted','candidates':[{'name':'Fake','color':color}]}
+            request={'user_id':'u','category':'blush','candidates':[{'name':'Fake','color':color}]}
             response=client.post('/api/recommend',json=request)
             self.assertEqual(response.status_code,200)
             self.assertTrue(all(p['score'] is None for p in response.json['results']))
@@ -57,7 +57,7 @@ class CatalogTests(unittest.TestCase):
             response=client.post('/api/rating',json={'user_id':'lip-user','event_id':'lip-one',
                 'category':'lip','color':product['color'],'rating':1})
             self.assertEqual(response.status_code,200)
-            response=client.post('/api/recommend',json={'user_id':'lip-user','category':'lip','mode':'weighted'})
+            response=client.post('/api/recommend',json={'user_id':'lip-user','category':'lip'})
             self.assertEqual(response.status_code,200)
             self.assertEqual(len(response.json['results']),52)
             top=response.json['results'][0]

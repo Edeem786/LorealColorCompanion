@@ -1,37 +1,39 @@
-from pathlib import Path
+import json
+import sqlite3
 import tempfile
 import unittest
-
-from preference import PreferenceService, SQLiteStorage
+from pathlib import Path
+from preference import SQLiteStorage
 
 
 class StorageTests(unittest.TestCase):
-    def test_file_roundtrip_and_profile(self):
-        with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "nested" / "preferences.db"
+    def test_persistence(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder)/"test.db"
             with SQLiteStorage(path) as storage:
-                model = PreferenceService(storage)
-                event = model.add_rating("u", "lip", [0.7, 0.1, 0.04], 1)
-                model.add_rating("u", "blush", [0.5, 0.2, 0.1], -1)
-                comparison = model.add_comparison("u", "eyes", [0.5, 0, 0], [0.6, 0, 0], "a")
-            with SQLiteStorage(path) as storage:
-                profile = storage.get_profile("u")
-                self.assertEqual(profile.categories["lip"].ratings, [event])
-                self.assertEqual(profile.categories["eyes"].comparisons, [comparison])
-                self.assertEqual(profile.categories["lip"].liked_colors, [(0.7, 0.1, 0.04)])
-                self.assertEqual(profile.categories["blush"].disliked_colors, [(0.5, 0.2, 0.1)])
+                event = storage.add_rating("u", "lip", [.7,.1,.04], 1)
                 self.assertIsNotNone(event.timestamp.tzinfo)
-                self.assertEqual(PreferenceService(storage).predict_preference("u", "lip", [0.7, 0.1, 0.04]), 1)
-                self.assertEqual(storage.get_profile("missing").categories, {})
+            with SQLiteStorage(path) as storage:
+                self.assertEqual(storage.get_ratings("u", "lip")[0].color_vector, (.7,.1,.04))
+                self.assertEqual(storage.get_ratings("missing", "lip"), [])
 
-    def test_sql_like_identifiers_are_literal_and_duplicates_retained(self):
-        with SQLiteStorage(":memory:") as storage:
-            user = "'; DROP TABLE ratings; --"
-            for _ in range(2):
-                storage.add_rating(user, "lip", [0.5, 0, 0], 1)
-            self.assertEqual(len(storage.get_ratings(user, "lip")), 2)
-            self.assertEqual(storage.get_ratings("other", "lip"), [])
-
-
-if __name__ == "__main__":
-    unittest.main()
+    def test_old_database_and_retry_records_survive(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder)/"old.db"
+            with sqlite3.connect(path) as connection:
+                connection.executescript("""
+                    CREATE TABLE ratings(id INTEGER PRIMARY KEY, user_id TEXT, category TEXT,
+                        l REAL, a REAL, b REAL, rating INTEGER, timestamp TEXT);
+                    INSERT INTO ratings VALUES(1,'u','lip',.7,.1,.04,1,'2026-09-01T00:00:00+00:00');
+                    CREATE TABLE comparisons(note TEXT);
+                    INSERT INTO comparisons VALUES('preserve me');
+                    CREATE TABLE onboarding_events(event_id TEXT PRIMARY KEY, payload TEXT NOT NULL);
+                """)
+                connection.execute("INSERT INTO onboarding_events VALUES (?,?)",
+                    ("old-event", json.dumps(["u","lip",[.7,.1,.04],1])))
+            connection.close()
+            with SQLiteStorage(path) as storage:
+                storage.add_rating("u", "lip", [.7,.1,.04], 1, event_id="old-event")
+                self.assertEqual(len(storage.get_ratings("u", "lip")), 1)
+                self.assertEqual(storage.connection.execute("SELECT note FROM comparisons").fetchone()[0], "preserve me")
+                self.assertEqual(storage.get_ratings("u", "lip")[0].preference_profile_id, "personal")

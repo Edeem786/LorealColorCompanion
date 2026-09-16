@@ -1,35 +1,41 @@
-from pathlib import Path
 import tempfile
 import unittest
-from onboarding.server import dispatch
+from pathlib import Path
+from onboarding.server import create_app
 from preference import SQLiteStorage
 
 
-class OnboardingTests(unittest.TestCase):
+class RatingRequestTests(unittest.TestCase):
     def setUp(self):
-        directory = tempfile.TemporaryDirectory()
-        self.addCleanup(directory.cleanup)
-        self.path = Path(directory.name) / "test.db"
-        self.event = {"user_id": "test", "event_id": "one", "color": [0.7, 0.12, 0.04], "rating": 1}
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        self.path = Path(folder.name)/"test.db"
+        self.client = create_app(self.path).test_client()
+        self.event = {"user_id":"u", "category":"lip", "event_id":"one", "color":[.7,.12,.04], "rating":1}
 
-    def test_confirmed_rating_retry_and_ranking(self):
+    def test_retries_and_conflicting_event_ids(self):
         for _ in range(2):
-            self.assertEqual(dispatch('/api/rating', self.event, self.path)['rating_count'], 1)
-        result = dispatch('/api/rank', {"user_id": "test", "candidates": [
-            {"name": "near", "color": self.event['color']}, {"name": "far", "color": [0.1, 0, 0]}]}, self.path)
-        self.assertEqual(result['results'][0]['name'], 'near')
-        self.assertEqual(result['results'][0]['score'], 1)
+            response = self.client.post('/api/rating', json=self.event)
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.json['rating_count'], 1)
+        for change in ({'rating':-1}, {'preference_profile_id':'environment:Friends'}, {'user_id':'other'}):
+            self.assertEqual(self.client.post('/api/rating',json={**self.event,**change}).status_code,400)
         with SQLiteStorage(self.path) as storage:
-            self.assertEqual(storage.get_ratings('test', 'blush'), [])
+            self.assertEqual(len(storage.get_ratings('u','lip')),1)
 
-    def test_conflicting_retry_rejected(self):
-        dispatch('/api/rating', self.event, self.path)
-        with self.assertRaises(ValueError):
-            dispatch('/api/rating', {**self.event, 'rating': -1}, self.path)
+    def test_invalid_feedback_writes_nothing(self):
+        for change in ({'event_id':None},{'color':[1,2]},{'rating':0},{'user_id':''},{'category':''}):
+            self.assertEqual(self.client.post('/api/rating',json={**self.event,**change}).status_code,400)
+        with SQLiteStorage(self.path) as storage:
+            self.assertEqual(storage.get_ratings('u','lip'),[])
 
-    def test_invalid_and_skip_do_not_save(self):
-        for override in ({'rating': None}, {'rating': True}, {'color': [2, 0, 0]}, {'user_id': ''}):
-            with self.assertRaises(ValueError):
-                dispatch('/api/rating', {**self.event, **override}, self.path)
-        result = dispatch('/api/rank', {'user_id': 'test', 'candidates': []}, self.path)
-        self.assertEqual(result['rating_count'], 0)
+    def test_aesthetic_save_retry(self):
+        event = {**self.event, 'preference_profile_id':'environment:Friends'}
+        for _ in range(2):
+            self.assertEqual(self.client.post('/api/rating',json=event).json['rating_count'],1)
+        with SQLiteStorage(self.path) as storage:
+            self.assertEqual(storage.get_ratings('u','lip'),[])
+            self.assertEqual(len(storage.get_ratings('u','lip','environment:Friends')),1)
+
+    def test_removed_rank_endpoint(self):
+        self.assertEqual(self.client.post('/api/rank',json={}).status_code,404)

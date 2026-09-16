@@ -205,6 +205,7 @@ function showReferenceShades(ref, rgbColors) {
 }
 // Build one reference card: image, crop controls, shade checkboxes.
 function renderReference(ref, kind) {
+  const category = $('category').value;
   const card = document.createElement('article');
   card.className = 'reference';
   ref.card = card;
@@ -478,7 +479,6 @@ async function requestRecommendations() {
     const data = await api('/api/recommend', {
       user_id: user(),
       category: $('category').value,
-      mode: 'weighted',
       personal_weight: hasAesthetic() ? Number($('weight').value) / 100 : 1,
       ...(hasAesthetic() ? {
         environment_profile_id: confirmedEnvironment

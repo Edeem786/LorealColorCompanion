@@ -1,6 +1,6 @@
 """Domain records. Colors are normalized OKLab vectors, not color labels."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 import math
 from typing import Sequence
@@ -36,36 +36,4 @@ class PreferenceEvent:
     color_vector: Color
     rating: int
     timestamp: datetime
-    preference_profile_id: str = "personal"
-
-
-@dataclass(frozen=True)
-class ComparisonEvent:
-    user_id: str
-    category: str
-    color_a: Color
-    color_b: Color
-    preferred: str
-    timestamp: datetime
-    preference_profile_id: str = "personal"
-
-
-@dataclass
-class CategoryPreference:
-    ratings: list[PreferenceEvent] = field(default_factory=list)
-    comparisons: list[ComparisonEvent] = field(default_factory=list)
-
-    @property
-    def liked_colors(self) -> list[Color]:
-        return [event.color_vector for event in self.ratings if event.rating == 1]
-
-    @property
-    def disliked_colors(self) -> list[Color]:
-        return [event.color_vector for event in self.ratings if event.rating == -1]
-
-
-@dataclass
-class UserPreferenceProfile:
-    user_id: str
-    categories: dict[str, CategoryPreference] = field(default_factory=dict)
     preference_profile_id: str = "personal"

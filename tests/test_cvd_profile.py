@@ -25,7 +25,7 @@ class CvdProfileTests(unittest.TestCase):
             self.assertEqual(fresh.get('/api/cvd-profile?user_id=a').json['profile']['severity_level'],1)
             result=fresh.post('/api/cvd-profile',json={**payload,'severity':'severe'})
             self.assertEqual(result.json['profile']['severity_level'],3)
-            rank=fresh.post('/api/rank',json={'user_id':'a','candidates':[]}).json
-            self.assertEqual(rank['rating_count'],0)
+            rank=fresh.post('/api/recommend',json={'user_id':'a','candidates':[]}).json
+            self.assertEqual(rank['personal_rating_count'],0)
             with fresh.get('/cvd-form.js') as response:
                 self.assertEqual(response.status_code,200)

@@ -1,7 +1,6 @@
 """Flask entry point. Run with python -m onboarding.server."""
 import sqlite3
 import base64
-from .vision import detect_lip_shades, detect_skin_shades
 from pathlib import Path
 
 from flask import Flask, abort, jsonify, request, send_from_directory
@@ -9,7 +8,8 @@ from werkzeug.exceptions import HTTPException
 
 from .catalog import CATALOG_DIR, load_catalog, list_catalogs
 from .cvd_profile import get_cvd_profile, save_cvd_profile
-from .actions import DATABASE, dispatch  # Retained for existing Python callers.
+from preference import PreferenceService, SQLiteStorage
+from preference.storage import DATABASE
 from .integrations import AccessibilityAssessment, MakeupRegion
 
 ROOT = Path(__file__).resolve().parent
@@ -51,7 +51,19 @@ def create_app(database=DATABASE, *, catalog_directory=CATALOG_DIR, detect_regio
 
     @app.post("/api/rating")
     def rating():
-        return jsonify(dispatch("/api/rating", request.get_json(), database))
+        payload = request.get_json()
+        if not isinstance(payload, dict):
+            raise ValueError("Expected an object.")
+        event_id = payload.get("event_id")
+        if not isinstance(event_id, str) or not 1 <= len(event_id) <= 100:
+            raise ValueError("A valid event_id is required.")
+        with SQLiteStorage(database) as storage:
+            service = PreferenceService(storage)
+            event = service.add_rating(payload.get("user_id"), payload.get("category", "lip"),
+                payload.get("color"), payload.get("rating"), payload.get("preference_profile_id", "personal"),
+                event_id=event_id)
+            return {"saved": True, "rating_count": len(storage.get_ratings(
+                event.user_id, event.category, event.preference_profile_id))}
 
     @app.post("/api/detect-lip-shades")
     def detect_lip():
@@ -66,6 +78,7 @@ def create_app(database=DATABASE, *, catalog_directory=CATALOG_DIR, detect_regio
         except Exception:
             return jsonify({"error": "Invalid image data."}), 400
 
+        from .vision import detect_lip_shades
         shades = detect_lip_shades(image_bytes)
         return jsonify({"shades": shades})
 
@@ -81,6 +94,7 @@ def create_app(database=DATABASE, *, catalog_directory=CATALOG_DIR, detect_regio
         except Exception:
             return jsonify({"error": "Invalid image data."}), 400
 
+        from .vision import detect_skin_shades
         shades = detect_skin_shades(image_bytes)
         return jsonify({"shades": shades})
 
@@ -101,20 +115,22 @@ def create_app(database=DATABASE, *, catalog_directory=CATALOG_DIR, detect_regio
                                             payload.get("severity"), database)}
 
     @app.post("/api/recommend")
-    @app.post("/api/rank")
-    def rank():
+    def recommend():
         payload = request.get_json()
-        if request.path == "/api/recommend":
-            if not isinstance(payload, dict):
-                raise ValueError("Expected an object.")
-            payload = {**payload, "candidates": load_catalog(payload.get("category", "blush"), catalog_directory)}
-            payload.setdefault("category", "blush")
-        result = dispatch("/api/rank", payload, database)
+        if not isinstance(payload, dict):
+            raise ValueError("Expected an object.")
+        category = payload.get("category", "blush")
+        products = load_catalog(category, catalog_directory)
+        with SQLiteStorage(database) as storage:
+            result = PreferenceService(storage).recommend(
+                payload.get("user_id"), category, products,
+                personal_weight=payload.get("personal_weight", 1.0),
+                environment_profile_id=payload.get("environment_profile_id"))
         for candidate in result["results"]:
             candidate["accessibility"] = None
             if assess_accessibility is not None:
                 try:
-                    assessment = assess_accessibility(payload["user_id"], payload.get("category", "lip"), tuple(candidate["color"]))
+                    assessment = assess_accessibility(payload["user_id"], category, tuple(candidate["color"]))
                     if assessment is not None:
                         if not isinstance(assessment, AccessibilityAssessment):
                             raise ValueError("Expected AccessibilityAssessment or None.")

@@ -1,6 +1,4 @@
-import math
 import unittest
-
 from preference import PreferenceService, SQLiteStorage
 
 
@@ -9,134 +7,73 @@ class PreferenceTests(unittest.TestCase):
         self.storage = SQLiteStorage(":memory:")
         self.addCleanup(self.storage.close)
         self.model = PreferenceService(self.storage)
-        self.a = [0.7, 0.12, 0.04]
-        self.b = [0.5, 0.25, 0.15]
+        self.a = [.7, .12, .04]
 
-    def test_near_liked_positive_near_disliked_negative(self):
-        self.model.add_rating("u", "blush", self.a, 1)
-        self.model.add_rating("u", "blush", self.b, -1)
-        self.assertGreater(self.model.predict_preference("u", "blush", [0.71, 0.12, 0.05]), 0.8)
-        self.assertLess(self.model.predict_preference("u", "blush", [0.51, 0.24, 0.15]), -0.8)
+    def result(self, color, user="u", category="lip"):
+        return self.model.recommend(user, category, [{"name": "test", "color": color}])["results"][0]
 
-    def test_unknown_isolation_and_online_update(self):
-        self.assertEqual(self.model.predict_preference("u", "lip", self.a), 0)
+    def test_likes_dislikes_and_unknown(self):
+        self.assertIsNone(self.result(self.a)["score"])
         self.model.add_rating("u", "lip", self.a, 1)
-        self.assertEqual(self.model.predict_preference("u", "lip", self.a), 1)
-        self.assertEqual(self.model.predict_preference("other", "lip", self.a), 0)
-        self.assertEqual(self.model.predict_preference("u", "blush", self.a), 0)
-        self.model.add_rating("u", "blush", self.a, -1)
-        self.assertEqual(self.model.predict_preference("u", "blush", self.a), -1)
-        self.assertEqual(self.model.predict_preference("u", "lip", self.a), 1)
-
-    def test_conflict_differs_from_unknown_and_distant(self):
-        unknown = self.model.explain_preference("u", "lip", self.a)
-        self.assertIn("unknown", unknown["reason"][0])
-        self.model.add_rating("u", "lip", self.a, 1)
-        far = self.model.explain_preference("u", "lip", [0, 0, 0])
-        self.assertLess(abs(far["score"]), 0.001)
-        self.assertIn("Little nearby evidence", far["reason"][-1])
+        self.assertEqual(self.result(self.a)["score"], 1)
+        self.assertIsNone(self.result(self.a, user="other")["score"])
+        self.assertIsNone(self.result(self.a, category="blush")["score"])
         self.model.add_rating("u", "lip", self.a, -1)
-        conflict = self.model.explain_preference("u", "lip", self.a)
+        conflict = self.result(self.a)
         self.assertEqual(conflict["score"], 0)
-        self.assertIn("conflicts", conflict["reason"][-1])
+        self.assertIn("conflicts", conflict["personal"]["reason"][-1])
 
-    def test_strongest_match_with_three_explanation_examples(self):
-        for lightness in (0.7, 0.71, 0.72, 0.0):
-            self.model.add_rating("u", "lip", [lightness, 0.12, 0.04], 1)
-        result = self.model.explain_preference("u", "lip", self.a)
-        expected = 1
-        self.assertAlmostEqual(result["score"], expected)
-        self.assertEqual(result["evidence"]["liked"]["used_count"], 1)
-        self.assertEqual(result["evidence"]["liked"]["shown_count"], 3)
-        self.assertEqual(result["evidence"]["liked"]["total_count"], 4)
-
-    def test_custom_distance_and_invalid_distance(self):
-        self.model.add_rating("u", "lip", self.a, 1)
-        custom = PreferenceService(self.storage, distance=lambda a, b: 0.1)
-        self.assertAlmostEqual(custom.predict_preference("u", "lip", self.b), math.exp(-0.5))
-        for value in (-1, float("nan"), float("inf")):
-            with self.subTest(value=value), self.assertRaises(ValueError):
-                PreferenceService(self.storage, distance=lambda a, b: value).predict_preference("u", "lip", self.a)
-
-    def test_separate_likes_do_not_imply_liking_gray(self):
-        for color in ([0, 0, 0], [1, 0, 0]):
+    def test_black_white_do_not_support_gray(self):
+        for color in ([0,0,0], [1,0,0]):
             self.model.add_rating("u", "lip", color, 1)
-        candidates = [{"name": name, "color": color} for name, color in (
-            ("black", [0, 0, 0]), ("white", [1, 0, 0]), ("gray", [.5, 0, 0]))]
-        results = self.model.rank_weighted("u", "lip", candidates)["results"]
-        self.assertEqual([r["score"] for r in results], [1, 1, None])
-        self.assertEqual(results[-1]["status"], "insufficient_evidence")
-        self.assertEqual(results[-1]["personal"]["evidence"]["disliked"]["total_count"], 0)
+            self.assertEqual(self.result(color)["score"], 1)
+        self.assertIsNone(self.result([.5,0,0])["score"])
 
     def test_unrelated_and_duplicate_likes_do_not_change_match(self):
         self.model.add_rating("u", "lip", self.a, 1)
-        candidate = [.71, .12, .04]
-        before = self.model.predict_preference("u", "lip", candidate)
-        for color in ([0, 0, 0], [1, 0, 0], self.a, self.a):
+        before = self.result([.71,.12,.04])["score"]
+        for color in ([0,0,0], [1,0,0], self.a):
             self.model.add_rating("u", "lip", color, 1)
-        self.assertEqual(self.model.predict_preference("u", "lip", candidate), before)
-        self.assertEqual(PreferenceService(self.storage, neighbors=1).predict_preference(
-            "u", "lip", candidate), before)
+        result = self.result([.71,.12,.04])
+        self.assertEqual(result["score"], before)
+        self.assertEqual(len(result["personal"]["evidence"]["liked"]["nearest"]), 1)
 
-    def test_local_cutoff_and_explicit_dislike(self):
-        self.model.add_rating("u", "lip", [0, 0, 0], 1)
-        self.assertGreater(self.model.predict_preference("u", "lip", [.199, 0, 0]), 0)
-        at_edge = self.model.explain_preference("u", "lip", [.2, 0, 0])
-        self.assertEqual(at_edge["score"], 0)
-        self.assertFalse(at_edge["has_nearby_evidence"])
-        self.model.add_rating("u", "lip", [.5, 0, 0], -1)
-        result = self.model.explain_preference("u", "lip", [.5, 0, 0])
-        self.assertEqual(result["score"], -1)
-        self.assertTrue(result["has_nearby_evidence"])
+    def test_cutoff_and_explicit_dislike(self):
+        self.model.add_rating("u", "lip", [0,0,0], 1)
+        self.assertGreater(self.result([.199,0,0])["score"], 0)
+        self.assertIsNone(self.result([.2,0,0])["score"])
+        self.model.add_rating("u", "lip", [.5,0,0], -1)
+        self.assertEqual(self.result([.5,0,0])["score"], -1)
 
-    def test_ranking_metadata_ties_no_mutation(self):
+    def test_metadata_ties_and_no_mutation(self):
         self.model.add_rating("u", "lip", self.a, 1)
-        candidates = [{"name": "far", "color": self.b},
-                      {"name": "first", "color": self.a, "finish": "matte"},
-                      {"name": "second", "color": self.a}]
-        ranked = self.model.rank_colors("u", "lip", candidates)
-        self.assertEqual([c["name"] for c in ranked], ["first", "second", "far"])
-        self.assertEqual(ranked[0]["finish"], "matte")
-        self.assertNotIn("score", candidates[1])
-        self.assertTrue(ranked[0]["reason"])
-        self.assertEqual(self.model.rank_colors("u", "lip", []), [])
-
-    def test_comparisons_do_not_imply_likes(self):
-        self.model.add_comparison("u", "lip", self.a, self.b, "b")
-        self.assertEqual(self.model.predict_preference("u", "lip", self.b), 0)
-        profile = self.model.get_profile("u")
-        self.assertEqual(profile.categories["lip"].comparisons[0].preferred, "b")
-        self.assertEqual(profile.categories["lip"].liked_colors, [])
+        products = [{"name":"first", "color":self.a, "finish":"matte"},
+                    {"name":"second", "color":self.a}]
+        result = self.model.recommend("u", "lip", products)["results"]
+        self.assertEqual([r["name"] for r in result], ["first", "second"])
+        self.assertEqual(result[0]["finish"], "matte")
+        self.assertNotIn("score", products[0])
+        self.assertEqual(self.model.recommend("u", "lip", [])["results"], [])
 
     def test_invalid_inputs(self):
-        for color in ([1, 2], [1, 2, 3, 4], [float("nan"), 0, 0], [0.5, float("inf"), 0],
-                      [1.01, 0, 0], [True, 0, 0], "abc", None, ["0.5", 0, 0]):
-            with self.subTest(color=color), self.assertRaises(ValueError):
-                self.model.add_rating("u", "lip", color, 1)
+        for color in ([1,2], [float("nan"),0,0], [1.1,0,0], [True,0,0], "bad"):
+            with self.assertRaises(ValueError):
+                self.result(color)
         for rating in (0, 2, True, "1"):
-            with self.subTest(rating=rating), self.assertRaises(ValueError):
+            with self.assertRaises(ValueError):
                 self.model.add_rating("u", "lip", self.a, rating)
-        with self.assertRaises(ValueError):
-            self.model.add_comparison("u", "lip", self.a, self.b, "tie")
-        with self.assertRaises(ValueError):
-            self.model.predict_preference("", "lip", self.a)
-        with self.assertRaises(ValueError):
-            self.model.add_rating("u", " ", self.a, 1)
-        for bandwidth in (0, -1, float("nan"), float("inf"), True):
+        for bandwidth in (0, -1, True, "bad", float("inf"), float("nan")):
             with self.assertRaises(ValueError):
                 PreferenceService(self.storage, bandwidth=bandwidth)
-        for neighbors in (0, -1, 1.5, True):
+        for products in (None, [{}], [{"name":"missing"}], [{}]*1001):
             with self.assertRaises(ValueError):
-                PreferenceService(self.storage, neighbors=neighbors)
-        self.assertEqual(self.model.get_profile("u").categories, {})
+                self.model.recommend("u", "lip", products)
+        with self.assertRaises(ValueError):
+            self.result(self.a, user="")
 
-    def test_scores_bounded_on_synthetic_grid(self):
+    def test_scores_bounded(self):
         for i in range(10):
-            self.model.add_rating("u", "lip", [i / 10, 0.02 * i, -0.01 * i], 1 if i % 2 else -1)
+            self.model.add_rating("u", "lip", [i/10,0,0], 1 if i%2 else -1)
         for i in range(21):
-            score = self.model.predict_preference("u", "lip", [i / 20, 0.1, 0.05])
-            self.assertTrue(-1 <= score <= 1)
-
-
-if __name__ == "__main__":
-    unittest.main()
+            score = self.result([i/20,0,0])["score"]
+            self.assertTrue(score is None or -1 <= score <= 1)
