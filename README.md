@@ -4,11 +4,11 @@ A local Flask app that learns color preferences from makeup reference photos and
 
 ## Guided reference flow
 
-Color vision is a separate stage after aesthetic inspiration and before the balance slider. Save the diagnosed type and severity to continue. Details are saved per user, separately from preferences. “Unsure” is disabled for now. Profiles include numeric `severity_level`: mild = 1, moderate = 2, severe = 3. This is an ordinal encoding, not a measured severity or simulation strength. Original labels are retained, and existing profiles get the derived number when read. These details do not change recommendations until a CVD adapter is connected; see [INTEGRATION.md](INTEGRATION.md).
+Color vision is a separate stage after aesthetic inspiration and before the balance slider. Save the diagnosed type and severity to continue. Details are saved per user, separately from preferences. “Unsure” is disabled for now. Profiles include numeric `severity_level`: mild = 1, moderate = 2, severe = 3. This is an ordinal encoding, not a measured severity or simulation strength. Original labels are retained, and existing profiles get the derived number when read. Supported diagnoses now adjust personal matching using the Machado simulation; aesthetic matching stays in original colors. Presets are 0.33/0.66/1.0; see [INTEGRATION.md](INTEGRATION.md).
 
 The site now uses Flask; the core preference model still uses only the standard library. The CV and CVD integration guide is in [INTEGRATION.md](INTEGRATION.md).
 
-`requirements.txt` installs only Flask and its dependencies for the current site. The pulled face-extractor dependency pins are preserved separately in `requirements-vision.txt`; they are optional and have not been validated in this machine's MSYS2 Python environment. The CV teammate also needs to supply `facetracker/face_landmarker.task` (ignored by Git). The detector now resolves this path relative to its module rather than the terminal's working directory. Automatic lip and blush extraction is now connected. It requires the optional vision setup; the new `colormatcher` functions remain unused.
+`requirements.txt` installs only Flask and its dependencies for the current site. The pulled face-extractor dependency pins are preserved separately in `requirements-vision.txt`; they are optional and have not been validated in this machine's MSYS2 Python environment. The CV teammate also needs to supply `facetracker/face_landmarker.task` (ignored by Git). The detector now resolves this path relative to its module rather than the terminal's working directory. Automatic lip and blush extraction is now connected. It requires the optional vision setup; `colormath.py` remains experimental, while `cvdsimulator.py` now adjusts personal scoring.
 
 Frontend code is kept in one readable `onboarding/app.js`, grouped into state/helpers, crop and shade review, reference cards, file loading, saving, navigation, and recommendation rendering. `continuePersonalReferences`, `continueAestheticReferences`, and `requestRecommendations` are the main button handlers. `renderRecommendations` builds the result cards. Shared helpers also support `cvd-form.js`. Run `node tests/test_app.cjs` for lightweight frontend behavior checks, alongside the Python suite and `node tests/test_colors.cjs`.
 
@@ -31,7 +31,7 @@ Open http://127.0.0.1:8000. Stop with Ctrl+C. Flask's local development server i
 
 1. Choose a makeup category, then upload your personal reference set (up to six images at once or added incrementally). Click **Auto-detect lip shades** or **Auto-detect blush shades**, depending on the category. Alternatively, select a region by dragging or using the keyboard crop sliders and manually extract up to three shades. Review the results and uncheck shades you do not want to use. One **Use these shades & continue** action saves all checked shades as likes. No per-shade Like/Dislike loop is required; unchecked shades are ignored, not disliked.
 2. Answer **Would you like to add an aesthetic reference?** Choose No for personal-only suggestions, or Yes to name an influence and upload a second set. Confirm that set in the same way. It represents your estimate of an audience's taste or a chosen aesthetic, not verified feedback from others.
-3. Enter the color vision type and severity from your diagnosis. This is saved separately from taste preferences; it does not yet change recommendations.
+3. Enter the color vision type and severity from your diagnosis. This is saved separately from taste preferences and selects the approximate simulation used for personal matching.
 4. Choose your balance. With a confirmed second set the slider starts at 60% personal / 40% aesthetic and allows 0–100% in five-point steps. Without a second set it is locked to 100% personal. Click **Suggest my shades**; change the slider and click again to compare results. Back buttons retain this session's reference sets without resaving completed events.
 
 Photos remain in the browser and disappear on refresh during manual cropping. Auto-detection sends a resized photo to Flask for processing without saving it. Lip mode samples lip landmarks; blush mode samples cheek appearance (skin plus makeup). Results require review before Continue saves likes. Optional vision dependencies and the face model are required; see [INTEGRATION.md](INTEGRATION.md). JPEG/PNG/WebP up to 10 MB and 40 megapixels are accepted. Images are scaled to at most 800 pixels on the long edge; a crop is sampled at up to 160 × 160. A deterministic OKLab histogram chooses frequent separated shades, excluding pixels with alpha below 250. The sRGB conversion follows [the OKLab reference](https://bottosson.github.io/posts/oklab/). Colors are approximate appearances affected by lighting, filters, skin, teeth and reflections.
@@ -114,7 +114,21 @@ An empty side contributes zero. Each reference supports its own local neighborho
 
 The default bandwidth is 0.1 and support ends at distance 0.2. This hard cutoff is a prototype parameter requiring user evaluation, not a perceptual indistinguishability threshold. Explanations show at most one nearest reference per side, its similarity and distance, plus saved event counts. A nearest reference can still be outside the cutoff with zero support. Scores range from -1 to 1; they are not probabilities.
 
-CVD simulation is not yet applied to personal scoring. The proposed next change is to compare simulated product/reference colors for personal taste while keeping aesthetic comparisons in original OKLab. Original stored colors should remain unchanged.
+Personal scoring now compares simulated product colors with simulated personal references. Aesthetic scoring compares original colors. `recommend(..., personal_transform=...)` accepts the transform; Flask builds it from the saved diagnosis. Original database colors and product previews remain unchanged. Explanation colors on the personal side are simulated when adjustment is active. Only the closest reference, similarity, distance, timestamp and total event count are retained per side.
+
+## Run with CVD simulation
+
+On this machine, a separate environment has been prepared and tested:
+
+```powershell
+.\.venv-cvd\Scripts\python.exe -m onboarding.server
+```
+
+Stop any existing server on port 8000 before restarting. This environment supports Flask and CVD simulation; it does not install the face extractor's dependencies or model. The original MSYS2 environment is unchanged.
+
+For another compatible Python environment, install `python -m pip install -r requirements-cvd.txt` and run `python -m onboarding.server` with that interpreter. The simulator uses `colour-science` and NumPy; no face model is needed for CVD matching. Dependency-free core preference use remains available.
+
+Mild/moderate/severe select **0.33/0.66/1.0** prototype presets. Missing/unsupported profiles, unavailable packages or simulation errors use original-color matching with a visible explanation. Successful results state that personal matching was adjusted. Tritan simulation is especially approximate. Aesthetic-only matching does not transform colors. The cutoff still needs tuning with actual user choices.
 
 ## Website API
 
@@ -136,7 +150,8 @@ Flask calls the service directly. There is no dispatcher or ranking mode selecto
 - `onboarding/catalog.py`: loads product JSON.
 - `onboarding/vision.py` and `facetracker/`: extraction wrappers and teammate CV implementation.
 - `onboarding/cvd_profile.py` and `cvd-form.js`: diagnosis storage and form.
-- `colormatcher/`: experimental color and CVD functions, separate from current ranking.
+- `colormatcher/cvdsimulator.py`: Machado matrix and personal color transformation.
+- `colormatcher/colormath.py`: experimental combination functions, not connected.
 
 There is no longer an `onboarding/actions.py`. Comparison and profile-snapshot methods were removed because the current app does not need them. Existing comparison tables in old databases are left untouched; new databases do not create them. Existing ratings, CVD profiles and retry records are preserved. No database reset is needed.
 
@@ -157,4 +172,4 @@ Node is only needed for the frontend checks. Tests cover scoring, profile separa
 
 This is a local prototype without authentication. SQLite stores feedback and diagnosis details locally; images are not stored. Product colors are estimated and previews may differ from real products. Ranking compares individual color appearances, not finish, skin suitability, availability, or complete-look compatibility. Photo lighting and skin influence extracted colors. An isolated noisy reference can dominate a match.
 
-The optional accessibility adapter attaches an assessment separately and does not change ranking. CVD severity levels are ordinal labels, not calibrated simulation strengths. See [INTEGRATION.md](INTEGRATION.md) for teammate interfaces.
+The old accessibility-score adapter and redundant detection endpoints have been removed. There is one lip/blush endpoint, `/api/detect-shades`, used by both reference sets. CVD severity levels map to prototype strengths rather than calibrated measurements. See [INTEGRATION.md](INTEGRATION.md) for teammate interfaces.

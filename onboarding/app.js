@@ -149,24 +149,6 @@ async function detectReferenceShades(ref, kind, button) {
   }
 }
 
-async function autoDetect(ref, button, endpoint) {
-  if (saving || ref.frozen) return;
-  button.disabled = true;
-  const original = button.textContent;
-  button.textContent = 'Detecting…';
-  status('Detecting shades…');
-  try {
-    const imageDataUrl = ref.source.toDataURL('image/jpeg', 0.85);
-    const data = await api(endpoint, { image: imageDataUrl, name: ref.name });
-    showReferenceShades(ref, data.shades);
-  } catch (e) {
-    status(e.message);
-  } finally {
-    button.disabled = false;
-    button.textContent = original;
-  }
-}
-
 // This only populates the review UI. Continue is still required to save likes.
 function showReferenceShades(ref, rgbColors) {
   if (ref.frozen || saving) return;
@@ -281,14 +263,11 @@ function renderReference(ref, kind) {
   extractButton.setAttribute('aria-label', 'Extract makeup shades from ' + ref.name);
   extractButton.onclick = () => extract(ref);
   const detectButton = document.createElement('button');
-  detectButton.textContent = 'Auto-detect lip shades';
-  detectButton.setAttribute('aria-label', 'Auto-detect lip shades for ' + ref.name);
-  detectButton.onclick = () => autoDetect(ref, detectButton, '/api/detect-lip-shades');
-
-  const detectSkinButton = document.createElement('button');
-  detectSkinButton.textContent = 'Auto-detect skin shades';
-  detectSkinButton.setAttribute('aria-label', 'Auto-detect skin shades for ' + ref.name);
-  detectSkinButton.onclick = () => autoDetect(ref, detectSkinButton, '/api/detect-skin-shades');
+  detectButton.textContent = 'Auto-detect ' + category + ' shades';
+  detectButton.disabled = !['lip', 'blush'].includes(category);
+  if (detectButton.disabled) detectButton.dataset.saved = 'true';
+  detectButton.setAttribute('aria-label', detectButton.textContent + ' for ' + ref.name);
+  detectButton.onclick = () => detectReferenceShades(ref, kind, detectButton);
   const remove = document.createElement('button');
   remove.textContent = 'Remove reference';
   remove.className = 'secondary';
@@ -309,7 +288,7 @@ function renderReference(ref, kind) {
     'Auto-detection sends this resized photo to the app server for processing. Photos are not saved. ' +
     (category === 'blush' ? 'Cheek shades include skin and makeup; review the results.' :
       'Review the detected lip shades before continuing.');
-  card.append(heading, canvas, hint, controls, detectButton, detectSkinButton, privacy, extractButton, remove, ref
+  card.append(heading, canvas, hint, controls, detectButton, privacy, extractButton, remove, ref
   .palette);
   $(kind + '-gallery').append(card);
   sync();
@@ -530,13 +509,14 @@ fetch('/api/catalogs').then(async response => {
   $('personal-upload').disabled = true;
 });
 
-// Build product cards and their preference/accessibility explanations.
+// Build product cards and their preference explanations.
 function renderRecommendations(data) {
   const note = document.createElement('p');
   note.textContent =
     `${Math.round(data.personal_weight*100)}% my taste · ${Math.round(data.environment_weight*100)}% aesthetic inspiration. Scores express similarity-based preferences, not probabilities.`;
   const grid = document.createElement('div');
   grid.className = 'cards';
+  if (data.cvd) note.textContent += ' ' + data.cvd.message;
   $('results').replaceChildren(note, grid);
   if (!data.results.some(r => r.score !== null && r.score > 0)) {
     const message = document.createElement('p');
@@ -563,16 +543,6 @@ function renderRecommendations(data) {
       `My taste: ${item.personal.reason.join(' ')}${hasAesthetic()?' Aesthetic estimate: '+item.environment.reason.join(' '):''}`;
     detail.append(label, reason);
     card.append(swatch, title, summary, detail);
-    if (item.accessibility) {
-      const accessibility = document.createElement('p');
-      accessibility.textContent =
-        `Accessibility: ${item.accessibility.score.toFixed(2)} / 1. ${item.accessibility.reason}`;
-      card.append(accessibility);
-    } else if (item.accessibility_error) {
-      const unavailable = document.createElement('p');
-      unavailable.textContent = item.accessibility_error;
-      card.append(unavailable);
-    }
     grid.append(card);
   }
 }
