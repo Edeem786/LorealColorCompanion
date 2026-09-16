@@ -40,13 +40,14 @@ class PreferenceTests(unittest.TestCase):
         self.assertEqual(conflict["score"], 0)
         self.assertIn("conflicts", conflict["reason"][-1])
 
-    def test_three_nearest_and_exact_formula(self):
+    def test_strongest_match_with_three_explanation_examples(self):
         for lightness in (0.7, 0.71, 0.72, 0.0):
             self.model.add_rating("u", "lip", [lightness, 0.12, 0.04], 1)
         result = self.model.explain_preference("u", "lip", self.a)
-        expected = (1 + math.exp(-0.5 * 0.1 ** 2) + math.exp(-0.5 * 0.2 ** 2)) / 3
+        expected = 1
         self.assertAlmostEqual(result["score"], expected)
-        self.assertEqual(result["evidence"]["liked"]["used_count"], 3)
+        self.assertEqual(result["evidence"]["liked"]["used_count"], 1)
+        self.assertEqual(result["evidence"]["liked"]["shown_count"], 3)
         self.assertEqual(result["evidence"]["liked"]["total_count"], 4)
 
     def test_custom_distance_and_invalid_distance(self):
@@ -56,6 +57,37 @@ class PreferenceTests(unittest.TestCase):
         for value in (-1, float("nan"), float("inf")):
             with self.subTest(value=value), self.assertRaises(ValueError):
                 PreferenceService(self.storage, distance=lambda a, b: value).predict_preference("u", "lip", self.a)
+
+    def test_separate_likes_do_not_imply_liking_gray(self):
+        for color in ([0, 0, 0], [1, 0, 0]):
+            self.model.add_rating("u", "lip", color, 1)
+        candidates = [{"name": name, "color": color} for name, color in (
+            ("black", [0, 0, 0]), ("white", [1, 0, 0]), ("gray", [.5, 0, 0]))]
+        results = self.model.rank_weighted("u", "lip", candidates)["results"]
+        self.assertEqual([r["score"] for r in results], [1, 1, None])
+        self.assertEqual(results[-1]["status"], "insufficient_evidence")
+        self.assertEqual(results[-1]["personal"]["evidence"]["disliked"]["total_count"], 0)
+
+    def test_unrelated_and_duplicate_likes_do_not_change_match(self):
+        self.model.add_rating("u", "lip", self.a, 1)
+        candidate = [.71, .12, .04]
+        before = self.model.predict_preference("u", "lip", candidate)
+        for color in ([0, 0, 0], [1, 0, 0], self.a, self.a):
+            self.model.add_rating("u", "lip", color, 1)
+        self.assertEqual(self.model.predict_preference("u", "lip", candidate), before)
+        self.assertEqual(PreferenceService(self.storage, neighbors=1).predict_preference(
+            "u", "lip", candidate), before)
+
+    def test_local_cutoff_and_explicit_dislike(self):
+        self.model.add_rating("u", "lip", [0, 0, 0], 1)
+        self.assertGreater(self.model.predict_preference("u", "lip", [.199, 0, 0]), 0)
+        at_edge = self.model.explain_preference("u", "lip", [.2, 0, 0])
+        self.assertEqual(at_edge["score"], 0)
+        self.assertFalse(at_edge["has_nearby_evidence"])
+        self.model.add_rating("u", "lip", [.5, 0, 0], -1)
+        result = self.model.explain_preference("u", "lip", [.5, 0, 0])
+        self.assertEqual(result["score"], -1)
+        self.assertTrue(result["has_nearby_evidence"])
 
     def test_ranking_metadata_ties_no_mutation(self):
         self.model.add_rating("u", "lip", self.a, 1)

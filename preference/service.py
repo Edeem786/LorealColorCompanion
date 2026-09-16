@@ -1,4 +1,4 @@
-"""Online, local-neighbor preference estimates without model training."""
+"""Local preference islands: strongest nearby like minus strongest nearby dislike."""
 
 import math
 from typing import Callable
@@ -17,7 +17,8 @@ class PreferenceService:
             raise ValueError("neighbors must be a positive integer.")
         self.storage = storage
         self.bandwidth = bandwidth
-        self.neighbors = neighbors
+        self.neighbors = neighbors  # Number of examples shown; does not affect scoring.
+        self.support_radius = 2 * bandwidth
         self.distance = distance
 
     def add_rating(self, user_id, category, color, rating, preference_profile_id="personal"):
@@ -47,25 +48,31 @@ class PreferenceService:
                 if not math.isfinite(distance) or distance < 0:
                     raise ValueError("Distance function must return a finite nonnegative number.")
                 ratio = distance / self.bandwidth
-                similarity = math.exp(-0.5 * ratio * ratio)
+                # No preference is inferred outside this reference's local neighborhood.
+                similarity = math.exp(-0.5 * ratio * ratio) if ratio < 2 else 0.0
                 matches.append({"color": list(event.color_vector), "distance": distance,
                                 "similarity": similarity, "timestamp": event.timestamp.isoformat()})
             nearest = sorted(matches, key=lambda match: match["distance"])[:self.neighbors]
-            evidence[label] = {"total_count": len(matches), "used_count": len(nearest),
-                               "mean_similarity": sum(m["similarity"] for m in nearest) / len(nearest) if nearest else 0.0,
+            strongest = nearest[0]["similarity"] if nearest else 0.0
+            evidence[label] = {"total_count": len(matches),
+                               "used_count": int(strongest > 0),
+                               "shown_count": len(nearest),
+                               "strongest_similarity": strongest,
                                "nearest": nearest}
-        liked = evidence["liked"]["mean_similarity"]
-        disliked = evidence["disliked"]["mean_similarity"]
+        liked = evidence["liked"]["strongest_similarity"]
+        disliked = evidence["disliked"]["strongest_similarity"]
         if not events:
             reason = ["No individual color ratings in this category; preference is unknown."]
         else:
-            reason = [f"Mean similarity to {evidence[label]['used_count']} nearest {label} rating(s): "
-                      f"{evidence[label]['mean_similarity']:.3f}." for label in ("liked", "disliked")]
-            if max(liked, disliked) < 0.1:
-                reason.append("Little nearby evidence; preference is uncertain.")
-            elif liked >= 0.1 and disliked >= 0.1 and abs(liked - disliked) < 0.1:
+            reason = [f"Strongest nearby {label} match: {evidence[label]['strongest_similarity']:.3f}."
+                      for label in ("liked", "disliked") if evidence[label]["total_count"]]
+            if max(liked, disliked) == 0:
+                reason.append("Little nearby evidence; preference is unknown, not disliked.")
+            elif liked > 0 and disliked > 0 and abs(liked - disliked) < 0.1:
                 reason.append("Nearby liked and disliked evidence conflicts.")
-        return {"score": liked - disliked, "reason": reason, "evidence": evidence}
+        return {"score": liked - disliked, "reason": reason, "evidence": evidence,
+                "has_nearby_evidence": max(liked, disliked) > 0,
+                "support_radius": self.support_radius}
 
     def rank_colors(self, user_id, category, candidate_colors, preference_profile_id="personal") -> list[dict]:
         events = self.storage.get_ratings(user_id, category, preference_profile_id)
@@ -90,9 +97,6 @@ class PreferenceService:
             color = validate_color(candidate["color"])
             personal = self._explain(color, personal_events)
             environment = self._explain(color, environment_events)
-            for explanation in (personal, environment):
-                explanation["has_nearby_evidence"] = max(
-                    side["mean_similarity"] for side in explanation["evidence"].values()) >= 0.1
             known = personal["has_nearby_evidence"] and environment["has_nearby_evidence"]
             overlap = min(personal["score"], environment["score"]) if known else None
             shared = known and personal["score"] > 0 and environment["score"] > 0
@@ -120,8 +124,6 @@ class PreferenceService:
                 raise ValueError("Each candidate must have name and color fields.")
             color = validate_color(candidate["color"])
             personal, environment = self._explain(color, personal_events), self._explain(color, environment_events)
-            for explanation in (personal, environment):
-                explanation["has_nearby_evidence"] = max(side["mean_similarity"] for side in explanation["evidence"].values()) >= 0.1
             known = ((weight == 0 or personal["has_nearby_evidence"])
                      and (weight == 1 or environment["has_nearby_evidence"]))
             score = weight * personal["score"] + (1 - weight) * environment["score"] if known else None
