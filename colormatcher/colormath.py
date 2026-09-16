@@ -60,3 +60,16 @@ def generate_candidate_palettes(shortlists):
 def palette_score(palette, coherence_score):
     item_scores = [product["combined_score"] for product in palette.values()]
     return min(min(item_scores), coherence_score)
+
+def delta_e76(color1, color2):
+    L1, a1, b1 = color1
+    L2, a2, b2 = color2
+    return math.sqrt((L1 - L2)**2 + (a1 - a2)**2 + (b1 - b2)**2)
+
+def color_similarity(color1, color2, scale=20.0):
+    """
+    Returns similarity in [0, 1]. scale controls how fast similarity
+    drops off with Delta E distance (smaller scale = stricter matching).
+    """
+    de = delta_e76(color1, color2)
+    return math.exp(-de / scale)
