@@ -54,13 +54,7 @@ class FaceLandmark(IntEnum):
     RIGHT_UNDER_EYE = 374
 
 
-SKIN_SAMPLE_POINTS = {
-    "left_cheek": FaceLandmark.LEFT_CHEEK,
-    "right_cheek": FaceLandmark.RIGHT_CHEEK,
-    "forehead": FaceLandmark.FOREHEAD_CENTER,
-    "nose_bridge": FaceLandmark.NOSE_BRIDGE,
-    "chin": FaceLandmark.CHIN,
-}
+MODEL_PATH = os.path.join(os.path.dirname(__file__), 'face_landmarker.task')
 
 
 def load_image(image_source):
@@ -79,10 +73,7 @@ def load_image(image_source):
 
 def get_landmarks(image, model_path=None):
     """Detect face landmarks in an already-loaded BGR image array."""
-    model_path = Path(model_path) if model_path is not None else Path(__file__).with_name("face_landmarker.task")
-    if not model_path.is_file():
-        raise FileNotFoundError(f"Face model missing: {model_path}. Obtain face_landmarker.task from your CV teammate.")
-    base_options = python.BaseOptions(model_asset_path=str(model_path))
+    base_options = python.BaseOptions(model_asset_path=MODEL_PATH)
     options = vision.FaceLandmarkerOptions(
         base_options=base_options,
         num_faces=2
