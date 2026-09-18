@@ -1,9 +1,13 @@
 __pycache__/
 *.py[cod]
 .venv/
+.venv-cvd/
 data/*.db
 data/*.db-*
 
 facetracker/venv/
 facetracker/*.task
+<<<<<<< Updated upstream
 .venv-cvd
+=======
+>>>>>>> Stashed changes
