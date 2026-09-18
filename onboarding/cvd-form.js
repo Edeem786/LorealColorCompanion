@@ -33,7 +33,7 @@ $('cvd-form').onsubmit = async event => {
   try {
     await api('/api/cvd-profile', {user_id: user(), type: $('cvd-type').value, severity: $('cvd-severity').value});
     if (ticket === cvdRequest) {
-      $('cvd-status').textContent = 'Color vision profile saved. Preference rankings are unchanged.';
+      $('cvd-status').textContent = 'Color vision profile saved. New suggestions will use the available simulation for your personal matches.';
       if (stageRevision === revision) {
         stage('balance');
         status('Choose your balance, then reveal your suggested products.');

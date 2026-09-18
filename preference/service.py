@@ -1,6 +1,7 @@
 """Local preference islands: strongest nearby like minus strongest nearby dislike."""
 
 import math
+from dataclasses import replace
 
 from .distance import euclidean_distance
 from .models import validate_color
@@ -47,8 +48,6 @@ class PreferenceService:
             nearest = sorted(matches, key=lambda match: match["distance"])[:1]
             strongest = nearest[0]["similarity"] if nearest else 0.0
             evidence[label] = {"total_count": len(matches),
-                               "used_count": int(strongest > 0),
-                               "shown_count": len(nearest),
                                "strongest_similarity": strongest,
                                "nearest": nearest}
         liked = evidence["liked"]["strongest_similarity"]
@@ -67,7 +66,7 @@ class PreferenceService:
                 "support_radius": self.support_radius}
 
     def recommend(self, user_id, category, candidate_colors, *, personal_weight=1.0,
-                      environment_profile_id=None):
+                      environment_profile_id=None, personal_transform=None):
         """User-controlled tradeoff; unknown active evidence has no blended score."""
         if not isinstance(candidate_colors, list) or len(candidate_colors) > 1000:
             raise ValueError("Provide up to 1000 candidates.")
@@ -80,12 +79,19 @@ class PreferenceService:
         environment_events = (self.storage.get_ratings(user_id, category, environment_profile_id)
                               if environment_profile_id is not None else [])
         weight = personal_weight if environment_events else 1.0
+        # Simulate each personal reference once, without changing saved events.
+        if personal_transform is not None and weight > 0:
+            personal_events = [replace(event, color_vector=validate_color(
+                personal_transform(event.color_vector))) for event in personal_events]
         results = []
         for candidate in candidate_colors:
             if not isinstance(candidate, dict) or "name" not in candidate or "color" not in candidate:
                 raise ValueError("Each candidate must have name and color fields.")
             color = validate_color(candidate["color"])
-            personal, environment = self._score_color(color, personal_events), self._score_color(color, environment_events)
+            personal_color = (validate_color(personal_transform(color))
+                              if personal_transform is not None and weight > 0 else color)
+            personal = self._score_color(personal_color, personal_events)
+            environment = self._score_color(color, environment_events)
             known = ((weight == 0 or personal["has_nearby_evidence"])
                      and (weight == 1 or environment["has_nearby_evidence"]))
             score = weight * personal["score"] + (1 - weight) * environment["score"] if known else None

@@ -17,6 +17,7 @@ class Element {
   setAttribute(name, value) { this[name] = value; }
   removeAttribute(name) { delete this[name]; }
   scrollIntoView() {}
+  getContext() { return {drawImage() {}, strokeRect() {}}; }
   querySelectorAll() { return []; }
 }
 
@@ -33,10 +34,11 @@ async function main() {
   let finishDetection;
   const context = vm.createContext({
     crypto: require('node:crypto').webcrypto,
-    FormData: class { append() {} },
+    FormData: class { constructor() { this.fields = {}; } append(key, value) { this.fields[key] = value; } },
     document: {getElementById: element, createElement: () => new Element(), querySelectorAll: () => []},
     fetch: async (url, options) => {
       if (url === '/api/detect-shades') {
+        requests.push({url, body: options.body.fields});
         return new Promise(resolve => { finishDetection = shades => resolve({
           ok: true, json: async () => ({shades})
         }); });
@@ -44,7 +46,7 @@ async function main() {
       const body = options ? JSON.parse(options.body) : null;
       requests.push({url, body});
       const data = url === '/api/catalogs' ? {catalogs: [{category: 'blush', count: 26}]} :
-        url === '/api/recommend' ? {personal_weight: 1, environment_weight: 0, results: [{
+        url === '/api/recommend' ? {cvd: {applied: true, message: 'CVD simulation active'}, personal_weight: 1, environment_weight: 0, results: [{
           name: 'Test product', color: [.6, .1, .04], score: .7,
           personal: {reason: ['Near a liked shade']}, environment: {reason: []}
         }]} : {saved: true};
@@ -79,6 +81,7 @@ async function main() {
   assert.equal(request.body.category, 'blush');
   assert.equal(element('results').children[1].children.length, 1);
   assert.equal(element('recommend').disabled, false);
+  assert.ok(element('results').children[0].textContent.includes('CVD simulation active'));
   element('balance-back').onclick();
   assert.equal(element('cvd-stage').hidden, false);
   element('category').onchange();
@@ -106,6 +109,30 @@ async function main() {
   finishDetection([[1, 2, 3]]);
   await pending;
   assert.equal(vm.runInContext('detectionRef.shades.length', context), 0, 'Ignore results after crop changes');
+  // Render real reference cards and click the actual category-specific button.
+  for (const category of ['lip', 'blush']) {
+    element('category').value = category;
+    vm.runInContext(`
+      detectionRef.box = {left: 25, top: 25, width: 50, height: 50};
+      detectionRef.source.width = detectionRef.source.height = 100;
+      renderReference(detectionRef, 'personal');
+    `, context);
+    const card = vm.runInContext('detectionRef.card', context);
+    const buttons = card.children.filter(child => typeof child.onclick === 'function' && child.textContent?.startsWith('Auto-detect'));
+    assert.equal(buttons.length, 1);
+    assert.equal(buttons[0].textContent, `Auto-detect ${category} shades`);
+    pending = buttons[0].onclick();
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(requests.at(-1).body.category, category);
+    finishDetection([[180, 80, 100]]);
+    await pending;
+    assert.equal(vm.runInContext('detectionRef.shades.length', context), 1);
+    pending = buttons[0].onclick();
+    await new Promise(resolve => setImmediate(resolve));
+    finishDetection([]);
+    await pending;
+    assert.equal(vm.runInContext('detectionRef.shades.length', context), 1, 'Empty detection preserves review');
+  }
   console.log('Frontend initialization, navigation, save retries, and recommendation rendering passed.');
 }
 
