@@ -6,4 +6,4 @@ data/*.db-*
 
 facetracker/venv/
 facetracker/*.task
-.venv-cvd/
+.venv-cvd
