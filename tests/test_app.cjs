@@ -45,7 +45,7 @@ async function main() {
       }
       const body = options ? JSON.parse(options.body) : null;
       requests.push({url, body});
-      const data = url === '/api/catalogs' ? {catalogs: [{category: 'blush', count: 26}]} :
+      const data = url.startsWith('/api/skin-tone') ? {colors: body?.colors || []} : url === '/api/catalogs' ? {catalogs: [{category: 'blush', count: 26}]} :
         url === '/api/recommend' ? {cvd: {applied: true, message: 'CVD simulation active'}, personal_weight: 1, environment_weight: 0, results: [{
           name: 'Test product', color: [.6, .1, .04], score: .7,
           personal: {reason: ['Near a liked shade']}, environment: {reason: []}
@@ -55,6 +55,7 @@ async function main() {
   });
   vm.runInContext(fs.readFileSync('onboarding/colors.js', 'utf8'), context);
   vm.runInContext(fs.readFileSync('onboarding/app.js', 'utf8'), context);
+  vm.runInContext(fs.readFileSync('onboarding/skin-form.js', 'utf8'), context);
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(element('category').value, 'blush');
   for (const id of ['personal-next', 'aesthetic-next', 'recommend']) assert.equal(typeof element(id).onclick, 'function');
@@ -83,6 +84,9 @@ async function main() {
   assert.equal(element('recommend').disabled, false);
   assert.ok(element('results').children[0].textContent.includes('CVD simulation active'));
   element('balance-back').onclick();
+  assert.equal(element('skin-stage').hidden, false);
+  await new Promise(resolve => setImmediate(resolve));
+  element('skin-back').onclick();
   assert.equal(element('cvd-stage').hidden, false);
   element('category').onchange();
   assert.equal(element('personal-stage').hidden, false);
@@ -133,6 +137,16 @@ async function main() {
     await pending;
     assert.equal(vm.runInContext('detectionRef.shades.length', context), 1, 'Empty detection preserves review');
   }
+  vm.runInContext("sets.skin.push({shades:[{selected:true,color:[.65,.07,.04]}]})", context);
+  await element('skin-next').onclick();
+  assert.equal(element('balance-stage').hidden, false);
+  assert.equal(requests.filter(r => r.url === '/api/skin-tone').at(-1).body.colors.length, 1);
+  assert.equal(requests.filter(r => r.url === '/api/rating').length, 1, 'Skin samples are not makeup likes');
+  element('skin-skip').onclick();
+  await element('recommend').onclick();
+  assert.equal(requests.filter(r => r.url === '/api/recommend').at(-1).body.use_skin_tone, false);
+  await element('skin-clear').onclick();
+  assert.equal(vm.runInContext('skinSavedCount', context), 0);
   console.log('Frontend initialization, navigation, save retries, and recommendation rendering passed.');
 }
 

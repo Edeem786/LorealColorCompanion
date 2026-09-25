@@ -16,7 +16,9 @@ async function loadCvdProfile() {
     if (data.profile) {
       $('cvd-type').value = data.profile.type;
       $('cvd-severity').value = data.profile.severity;
-      $('cvd-status').textContent = 'Saved diagnosis details loaded. You can update them here.';
+      $('cvd-status').textContent = `Loaded saved color vision details for profile "${profileUser}". These are previous selections, not a default diagnosis. You can update them here.`;
+    } else {
+      $('cvd-status').textContent = 'No color vision details saved for this profile. Select the type and severity from your diagnosis.';
     }
   } catch (error) {
     if (ticket === cvdRequest) $('cvd-status').textContent = error.message;
@@ -35,8 +37,8 @@ $('cvd-form').onsubmit = async event => {
     if (ticket === cvdRequest) {
       $('cvd-status').textContent = 'Color vision profile saved. New suggestions will use the available simulation for your personal matches.';
       if (stageRevision === revision) {
-        stage('balance');
-        status('Choose your balance, then reveal your suggested products.');
+        stage('skin');
+        status('Add your skin tone for blush matching, or skip this step.');
       }
     }
   } catch (error) {

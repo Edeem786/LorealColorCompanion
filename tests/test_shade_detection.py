@@ -19,11 +19,11 @@ class ShadeDetectionTests(unittest.TestCase):
         def detector(image, category):
             calls.append(category)
             return [[180, 80, 100]]
-        for category in ('lip', 'blush'):
+        for category in ('lip', 'blush', 'skin_tone'):
             result = self.upload(detector, category)
             self.assertEqual(result.status_code, 200)
             self.assertEqual(result.json['shades'], [[180, 80, 100]])
-        self.assertEqual(calls, ['lip', 'blush'])
+        self.assertEqual(calls, ['lip', 'blush', 'skin_tone'])
 
     def test_empty_and_invalid_requests(self):
         self.assertEqual(self.upload(lambda *_: []).json, {'shades': []})

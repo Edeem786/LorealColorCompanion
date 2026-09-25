@@ -1,21 +1,193 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Color Companion · Your reference palette</title><link rel="stylesheet" href="/style.css"></head>
-<body><main><header><p class="eyebrow">COLOR COMPANION · YOUR REFERENCE PALETTE</p><h1>Your taste. Your inspiration.<br>Your balance.</h1><p>Start with makeup in your selected category you love. Add an optional aesthetic influence, then find shades that reflect your priorities.</p></header>
-<label for="user">Your profile ID</label><input id="user" maxlength="80" value="demo-user" autocomplete="off"><p class="hint">Saved color preferences continue under this ID. Manual cropping keeps photos in your browser. Auto-detection sends a resized photo to the app server for processing without saving it. Review extracted shades before continuing.</p>
-
-<label for="category">Makeup category</label><select id="category"><option value="blush">blush</option></select><p class="hint">Choose references for this makeup category. Lip and blush preferences are kept separate.</p>
-<nav aria-label="Your progress"><ol class="steps"><li id="step-personal" aria-current="step">1 · Your references</li><li id="step-aesthetic">2 · Aesthetic inspiration</li><li id="step-cvd">3 · Color vision</li><li id="step-balance">4 · Your balance</li></ol></nav>
-<section id="personal-stage"><p class="eyebrow">STEP 01</p><h2>Choose references for what you like.</h2><p>Add photos with makeup in your selected category you would like to wear. Select the makeup region in each photo, then review the extracted shades together.</p>
-<label for="personal-upload">Your reference images</label><input type="file" id="personal-upload" multiple accept="image/jpeg,image/png,image/webp"><p class="hint">Up to 6 images per set. JPEG, PNG or WebP; up to 10 MB and 40 megapixels each. Crop tightly to avoid teeth, skin and reflections.</p><div id="personal-gallery" class="references"></div>
-<p>Keep checked only the shades you like. Continuing saves all checked shades as likes; unchecked shades are ignored.</p><button id="personal-next" disabled>Use these shades &amp; continue</button></section>
-<section id="aesthetic-stage" hidden><p class="eyebrow">STEP 02 · OPTIONAL</p><h2>Would you like to add an aesthetic reference?</h2><p>This can represent a friend group, a partner, a workplace or an aesthetic you want to fit. You decide the influence.</p>
-<label for="add-aesthetic">Add a second set of images?</label><select id="add-aesthetic"><option value="no">No, just my preferences</option><option value="yes">Yes, add aesthetic inspiration</option></select>
-<div id="aesthetic-inputs" hidden><label for="environment">What does this inspiration represent?</label><input id="environment" maxlength="80" value="Friends" placeholder="Friends, Partner, Workplace…"><label for="aesthetic-upload">Aesthetic reference images</label><input type="file" id="aesthetic-upload" multiple accept="image/jpeg,image/png,image/webp"><p class="hint">Up to 6 images. These represent your estimate of this audience’s taste, not verified feedback from them. Review each makeup region and keep the relevant shades checked.</p><div id="aesthetic-gallery" class="references"></div></div>
-<button id="aesthetic-back" class="secondary">Back to my references</button><button id="aesthetic-next">Continue with just my preferences</button></section>
-<section id="cvd-stage" hidden><p class="eyebrow">STEP 03</p><h2>Your color vision profile</h2><p>Enter the type and severity stated in your diagnosis. Personal matching uses an approximate simulation with mild, moderate and severe presets of 0.33, 0.66 and 1.0.</p>
-<button id="cvd-back" type="button" class="secondary">Back to aesthetic inspiration</button><form id="cvd-form"><label for="cvd-type">Diagnosed type</label><select id="cvd-type" required><option value="">Select your type</option><option value="deutan">Deutan</option><option value="protan">Protan</option><option value="tritan">Tritan</option><option value="other">Another diagnosed type</option><option disabled>Unsure — coming later</option></select>
-<label for="cvd-severity">Diagnosed severity</label><select id="cvd-severity" required><option value="">Select your severity</option><option value="mild">Mild</option><option value="moderate">Moderate</option><option value="severe">Severe</option><option disabled>Unsure — coming later</option></select><button id="cvd-save" type="submit">Save profile &amp; continue</button></form>
-<p class="hint">This stores your entered diagnosis for the future CVD module; it does not yet change recommendations.</p><p id="cvd-status" role="status" aria-live="polite"></p></section>
-<section id="balance-stage" hidden><p class="eyebrow">STEP 04</p><h2>Find your balance.</h2><p id="balance-description"></p><label for="weight">How much should your own taste influence the suggestions?</label><input id="weight" type="range" min="0" max="100" step="5" value="100" aria-describedby="weight-output"><output id="weight-output"></output><p class="hint">The balance expresses your priorities. A weighted match may involve a tradeoff; it does not guarantee that both parties like it.</p>
-<button id="balance-back" class="secondary">Back to color vision</button><button id="recommend">Suggest my shades</button><p class="hint">Suggestions come from your L’Oréal product catalog. Catalog colors are estimated; previews may differ from the actual product. Availability is not checked live.</p><div id="results" aria-live="polite"></div></section>
-<p id="status" role="status" aria-live="polite"></p></main><script src="/colors.js"></script><script src="/app.js"></script><script src="/cvd-form.js"></script></body></html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Color Companion · Your reference palette</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<a id="skip-content" class="skip-link" href="#personal-stage">Skip to content</a>
+<header class="masthead">
+  <a class="brand" href="/" aria-label="Color Companion home">
+<span class="monogram">C</span>
+<span>Color Companion<small>Beauty, through your eyes.</small>
+</span>
+</a>
+  <span class="prototype-tag">L’Oréal hackathon prototype</span>
+</header>
+<main>
+<nav aria-label="Your progress">
+<ol class="steps">
+<li id="step-personal" aria-current="step">1 · Your references</li>
+<li id="step-aesthetic">2 · Aesthetic inspiration</li>
+<li id="step-cvd">3 · Color vision</li>
+<li id="step-skin">4 · Skin tone</li>
+<li id="step-balance">5 · Balance &amp; suggestions</li>
+</ol>
+</nav>
+<div class="profile-bar">
+  <div>
+<label for="user">PROFILE ID</label>
+<input id="user" maxlength="80" value="demo-user" autocomplete="off"></div>
+  <div>
+<label for="category">MAKEUP CATEGORY</label>
+<select id="category">
+<option value="blush">Blush</option>
+</select></div>
+  <p>Your saved shades stay with your profile.<br>Lip and blush preferences are kept separate.</p></div>
+<section id="personal-stage">
+<p class="eyebrow">STEP 01 · YOUR REFERENCES</p>
+<h2>What makeup do you like?</h2>
+<p>Add photos with makeup in your selected category you would like to wear. Select the makeup region in each photo, then review the extracted shades together.</p>
+<div class="upload-panel">
+<span class="upload-icon" aria-hidden="true">↑</span>
+<h3>Add your makeup inspiration</h3>
+<p>Choose photos of shades you would love to wear.</p>
+<label class="upload-button" for="personal-upload">Browse images<input type="file" id="personal-upload" multiple accept="image/jpeg,image/png,image/webp">
+</label>
+<span class="hint">JPEG, PNG or WebP · Up to 10 MB per image</span></div>
+<p class="hint">Up to 6 images per set. JPEG, PNG or WebP; up to 10 MB and 40 megapixels each. Crop tightly to avoid teeth, skin and reflections.</p>
+<p class="notice">Manual cropping keeps photos in your browser. Auto-detection sends a resized image to the app server for processing; photos are not saved.</p>
+<div id="personal-gallery" class="references"></div>
+<p class="review-note">Keep checked only the shades you like. Continuing saves all checked shades as likes; unchecked shades are ignored.</p>
+<div class="actions">
+<span id="personal-count">Select shades to get started</span>
+<button id="personal-next" disabled>Use these shades &amp; continue →</button></div>
+</section>
+<section id="aesthetic-stage" hidden>
+<p class="eyebrow">STEP 02 · OPTIONAL</p>
+<h2>Would you like to add an aesthetic reference?</h2>
+<p>This can represent a friend group, a partner, a workplace or an aesthetic you want to fit. You decide the influence.</p>
+<label for="add-aesthetic">Add a second set of images?</label>
+<select id="add-aesthetic">
+<option value="no">No, just my preferences</option>
+<option value="yes">Yes, add aesthetic inspiration</option>
+</select>
+<div id="aesthetic-inputs" class="inspiration-panel" hidden>
+<label for="environment">What does this inspiration represent?</label>
+<input id="environment" maxlength="80" value="Friends" placeholder="Friends, Partner, Workplace…">
+<div class="upload-panel">
+<span class="upload-icon" aria-hidden="true">↑</span>
+<h3>Add aesthetic inspiration</h3>
+<p>Choose makeup that represents this audience’s taste.</p>
+<label class="upload-button" for="aesthetic-upload">Browse images<input type="file" id="aesthetic-upload" multiple accept="image/jpeg,image/png,image/webp">
+</label>
+<span class="hint">JPEG, PNG or WebP · Up to 10 MB per image</span></div>
+<p class="hint">Up to 6 images. These represent your estimate of this audience’s taste, not verified feedback from them. Review each makeup region and keep the relevant shades checked.</p>
+<div id="aesthetic-gallery" class="references"></div>
+</div>
+<div class="actions">
+<button id="aesthetic-back" class="secondary">Back to my references</button>
+<button id="aesthetic-next">Continue with just my preferences</button></div>
+</section>
+<section id="cvd-stage" hidden>
+<p class="eyebrow">STEP 03 · COLOR VISION</p>
+<h2>Your color vision profile</h2>
+<p>Tell us the type and severity stated in your diagnosis, so we can account for your color vision when matching your taste.</p>
+<div class="two-column">
+<form id="cvd-form" class="panel">
+<h3>Your diagnosed profile</h3>
+<label for="cvd-type">Diagnosed type</label>
+<select id="cvd-type" required>
+<option value="">Select your type</option>
+<option value="deutan">Deutan</option>
+<option value="protan">Protan</option>
+<option value="tritan">Tritan</option>
+<option value="other">Another diagnosed type</option>
+<option disabled>Unsure — coming later</option>
+</select>
+<label for="cvd-severity">Diagnosed severity</label>
+<select id="cvd-severity" required>
+<option value="">Select your severity</option>
+<option value="mild">Mild</option>
+<option value="moderate">Moderate</option>
+<option value="severe">Severe</option>
+<option disabled>Unsure — coming later</option>
+</select>
+</form>
+<aside class="panel soft">
+<p class="eyebrow">A MORE PERSONAL MATCH</p>
+<h3>Your vision. Your preferences.</h3>
+<p>We compare your reference shades and product shades using the same approximate color-vision simulation.</p>
+<div class="decorative-palette" aria-hidden="true">
+<span>
+</span>
+<span>
+</span>
+<span>
+</span>
+<span>
+</span></div>
+<p>Aesthetic inspiration is compared using original colors.</p>
+<p class="hint">This is a prototype, not a vision test. Mild, moderate and severe use simulation presets of 0.33, 0.66 and 1.0. Another diagnosed type uses original colors.</p>
+</aside></div>
+<div class="actions">
+<button id="cvd-back" type="button" class="secondary">← Back to inspiration</button>
+<button id="cvd-save" type="submit" form="cvd-form">Save profile &amp; continue →</button></div>
+<p id="cvd-status" role="status" aria-live="polite"></p>
+</section>
+<section id="skin-stage" hidden>
+<p class="eyebrow">STEP 04 · OPTIONAL</p>
+<h2>Your skin tone</h2>
+<p>Add a photo of yourself with bare skin in even lighting. Crop a small skin area or use automatic skin detection, then keep the samples that represent your skin. These are measurements, not colors you like.</p>
+<p class="hint">Used only for blush suggestions. Photo lighting affects the result; this is a prototype color-coherence factor, not a validated suitability assessment.</p>
+<div class="upload-panel">
+<span class="upload-icon" aria-hidden="true">↑</span>
+<h3>Add a skin photo</h3>
+<p>Choose bare skin in soft, even lighting.</p>
+<label class="upload-button" for="skin-upload">Browse images<input id="skin-upload" type="file" accept="image/jpeg,image/png,image/webp">
+</label>
+<span class="hint">JPEG, PNG or WebP · Up to 10 MB per image</span></div>
+<div id="skin-gallery" class="references"></div>
+<div id="skin-saved"></div>
+<p id="skin-status" role="status"></p>
+<div class="actions">
+<button id="skin-back" class="secondary">Back to color vision</button>
+<button id="skin-next" disabled>Save skin samples &amp; continue</button></div>
+<div class="optional-actions">
+<button id="skin-skip" class="secondary">Continue without skin tone</button>
+<button id="skin-clear" class="secondary" hidden>Remove saved skin samples</button></div>
+</section>
+<section id="balance-stage" hidden>
+<p class="eyebrow">STEP 05 · BALANCE &amp; SUGGESTIONS</p>
+<h2>Find your balance.</h2>
+<p id="balance-description"></p>
+<div class="two-column balance-layout">
+<div class="panel soft">
+<h3>A little you. A little inspiration.</h3>
+<label for="weight">How much should your own taste influence the suggestions?</label>
+<input id="weight" type="range" min="0" max="100" step="5" value="100" aria-describedby="weight-output">
+<output id="weight-output"></output>
+<p class="hint">The balance expresses your priorities. A weighted match may involve a tradeoff; it does not guarantee that both parties like it.</p>
+<button id="recommend">Suggest my shades →</button></div>
+<aside class="panel">
+<p class="eyebrow">HOW YOUR MATCHES WORK</p>
+<h3>Inspired by you.<br>Found in the catalog.</h3>
+<p>Every available catalog shade is compared with your saved references. Your balance decides how much each set matters.</p>
+<p class="hint">Skin samples add a color-coherence factor for blush. A close match is a starting point to explore, not a guarantee.</p>
+</aside></div>
+<h3 class="results-heading">Your shade edit</h3>
+<p class="hint">Suggestions come from your L’Oréal product catalog. Catalog colors are estimated; previews may differ from the actual product. Availability is not checked live.</p>
+<div id="results" aria-live="polite"></div>
+<div class="actions">
+<button id="balance-back" class="secondary">← Back to skin tone</button>
+<span>Make room for your kind of beauty.</span></div>
+</section>
+<p id="status" role="status" aria-live="polite"></p>
+</main>
+<footer>
+<span class="footer-brand">Color Companion</span>
+<p>A personal approach to makeup discovery.<br>Hackathon prototype · Not a diagnostic tool.</p>
+<span>Made for your perspective.</span>
+</footer>
+<script src="/colors.js">
+</script>
+<script src="/app.js">
+</script>
+<script src="/skin-form.js">
+</script>
+<script src="/cvd-form.js">
+</script>
+</body>
+</html>

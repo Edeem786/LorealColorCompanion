@@ -4,7 +4,7 @@
 
 The UI now supports manual extraction and automatic lip/blush detection in both reference sets. Clicking Auto-detect sends the resized photo to Flask, without saving the image. Detection fills review checkboxes; Continue saves likes.
 
-`onboarding/vision.py` provides lip extraction and a cheek-only blush sampler. Blush samples visible skin-plus-makeup appearance, not isolated pigment. Skin and iris helpers remain separate. Install the optional `requirements-vision.txt` dependencies in the teammate's compatible environment and supply `facetracker/face_landmarker.task`. Real model detection remains unvalidated here because those dependencies and the model are missing. Missing setup produces a manual fallback message.
+`onboarding/vision.py` provides lip extraction and a cheek-only blush sampler. Blush samples visible skin-plus-makeup appearance, not isolated pigment. Skin extraction is also used by the separate skin-tone step; the iris helper remains separate. Install the optional `requirements-vision.txt` dependencies in the teammate's compatible environment and supply `facetracker/face_landmarker.task`. Real model detection remains unvalidated here because those dependencies and the model are missing. Missing setup produces a manual fallback message.
 
 ## RGB contract
 
@@ -24,11 +24,11 @@ The request supplies the oriented, resized **full reference image as PNG bytes**
 
 1. Update `detect_lip_shades` or `detect_blush_shades` in `onboarding/vision.py`, preserving the RGB contract. Imports are lazy so manual use does not require CV packages.
 2. Alternatively pass `create_app(detect_shades=your_function)`. It takes `(image_bytes, category)` and returns the RGB list.
-3. `POST /api/detect-shades` accepts multipart fields `image` (PNG) and `category` (`lip` or `blush`). It checks upload size, PNG header/dimensions (up to 800 pixels per side) and returned RGB values. The detector decodes the image. Success returns `{"shades": [...]}`; setup or detector failure returns a 503 error with manual fallback guidance.
+3. `POST /api/detect-shades` accepts multipart fields `image` (PNG) and `category` (`lip`, `blush` or `skin_tone`). It checks upload size, PNG header/dimensions (up to 800 pixels per side) and returned RGB values. The detector decodes the image. Success returns `{"shades": [...]}`; setup or detector failure returns a 503 error with manual fallback guidance.
 4. `detectReferenceShades` uploads and populates `showReferenceShades`. Empty/error results preserve existing shades. Responses are ignored after removal, manual extraction, crop changes, profile/category changes or freezing. No ratings are created by detection.
 5. Validate actual photos in the teammate's environment. The landmark detector accepts exactly one face, rejecting no-face and multiple-face results.
 
-The old rectangle-only endpoint, separate lip/skin endpoints and accessibility-score adapter have been removed. General skin/iris extraction remains available as Python helpers. `colormatcher/colormath.py` remains experimental; `cvdsimulator.py` is connected to personal ranking.
+The old rectangle-only endpoint, separate lip/skin endpoints and accessibility-score adapter have been removed. Skin extraction is used for skin-tone measurements; iris extraction remains a Python helper. `colormatcher/colormath.py` remains experimental; `cvdsimulator.py` is connected to personal ranking.
 
 ## Manual extraction explained
 
@@ -70,3 +70,9 @@ The real simulation has been checked using the project's separate `.venv-cvd` en
 Missing diagnosis, unsupported types, missing packages or simulation failure produce recommendations using original colors with an explicit `cvd.applied: false` and explanation. Successful simulation returns `cvd.applied: true`, type and numerical preset. The browser displays this message above results. Aesthetic-only results state that only original colors are used. Tritan simulation is explicitly identified as particularly approximate, following the library's warning.
 
 Sources: [Machado matrix implementation](https://colour.readthedocs.io/en/v0.4.7/generated/colour.matrix_cvd_Machado2009.html), [linear RGB conversion](https://colour.readthedocs.io/en/develop/generated/colour.XYZ_to_RGB.html).
+
+## Skin samples
+
+The skin-tone stage follows CVD and precedes balance. The shared detector routes `skin_tone` to `detect_skin_shades`; manual cropping is also available. `POST /api/skin-tone` replaces confirmed samples in category `skin_tone`, personal profile, without changing makeup preference events. `GET /api/skin-tone` reloads them. `colors: []` clears stored samples.
+
+Blush ranking uses the existing `coherence` helper on original skin and product colors as a multiplicative factor for positive preference scores. Unknown and negative scores retain their previous meaning. `use_skin_tone: false` skips it for a request; lip ranking always skips it. This connects the existing heuristic without switching the app to the experimental `compare_single()` path.

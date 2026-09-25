@@ -39,7 +39,7 @@ def create_app(database=DATABASE, *, catalog_directory=CATALOG_DIR, detect_shade
 
     @app.get("/<filename>")
     def assets(filename):
-        if filename not in {"app.js", "colors.js", "cvd-form.js", "style.css"}:
+        if filename not in {"app.js", "colors.js", "cvd-form.js", "skin-form.js", "style.css"}:
             abort(404)
         return send_from_directory(ROOT, filename)
 
@@ -62,6 +62,20 @@ def create_app(database=DATABASE, *, catalog_directory=CATALOG_DIR, detect_shade
     @app.get("/api/catalogs")
     def catalogs():
         return {"catalogs": list_catalogs(catalog_directory)}
+
+    @app.get("/api/skin-tone")
+    def skin_tone():
+        with SQLiteStorage(database) as storage:
+            return {"colors": [list(event.color_vector) for event in
+                    storage.get_ratings(request.args.get("user_id"), "skin_tone")]}
+
+    @app.post("/api/skin-tone")
+    def save_skin_tone():
+        payload = request.get_json()
+        if not isinstance(payload, dict):
+            raise ValueError("Expected an object.")
+        with SQLiteStorage(database) as storage:
+            return {"colors": storage.save_skin_tones(payload.get("user_id"), payload.get("colors"))}
 
     @app.get("/api/cvd-profile")
     def cvd_profile():
@@ -104,7 +118,8 @@ def create_app(database=DATABASE, *, catalog_directory=CATALOG_DIR, detect_shade
         with SQLiteStorage(database) as storage:
             service = PreferenceService(storage)
             options = {"personal_weight": payload.get("personal_weight", 1.0),
-                       "environment_profile_id": payload.get("environment_profile_id")}
+                       "environment_profile_id": payload.get("environment_profile_id"),
+                       "use_skin_tone": payload.get("use_skin_tone", True)}
             try:
                 result = service.recommend(payload.get("user_id"), category, products,
                                            personal_transform=transform, **options)
@@ -122,8 +137,8 @@ def create_app(database=DATABASE, *, catalog_directory=CATALOG_DIR, detect_shade
     @app.post("/api/detect-shades")
     def extract_shades():
         category = request.form.get("category")
-        if category not in {"lip", "blush"}:
-            abort(400, description="Choose lip or blush for automatic detection.")
+        if category not in {"lip", "blush", "skin_tone"}:
+            abort(400, description="Choose lip, blush or skin_tone for automatic detection.")
         uploaded = request.files.get("image")
         if uploaded is None or uploaded.mimetype != "image/png":
             abort(400, description="Provide a PNG in the image field.")
@@ -142,8 +157,8 @@ def create_app(database=DATABASE, *, catalog_directory=CATALOG_DIR, detect_shade
                 shades = detect_shades(image_bytes, category)
             else:
                 # Keep optional CV imports out of normal startup and manual extraction.
-                from .vision import detect_lip_shades, detect_blush_shades
-                detector = detect_lip_shades if category == "lip" else detect_blush_shades
+                from .vision import detect_lip_shades, detect_blush_shades, detect_skin_shades
+                detector = {"lip": detect_lip_shades, "blush": detect_blush_shades, "skin_tone": detect_skin_shades}[category]
                 shades = detector(image_bytes)
             if (not isinstance(shades, list) or len(shades) > 12 or any(
                 not isinstance(shade, list) or len(shade) != 3 or any(

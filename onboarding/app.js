@@ -2,7 +2,8 @@
 const $ = id => document.getElementById(id);
 const sets = {
   personal: [],
-  aesthetic: []
+  aesthetic: [],
+  skin: []
 };
 let revision = 0,
   loading = false,
@@ -38,14 +39,18 @@ function clearResults() {
 }
 
 function stage(name) {
-  for (const key of ['personal', 'aesthetic', 'cvd', 'balance']) {
+  if (name === 'skin') loadSkinProfile();
+  for (const key of ['personal', 'aesthetic', 'cvd', 'skin', 'balance']) {
     $(key + '-stage').hidden = key !== name;
     if (key === name) $('step-' + key).setAttribute('aria-current', 'step');
     else $('step-' + key).removeAttribute('aria-current');
   }
   clearResults();
+  $('skip-content').setAttribute('href', '#' + name + '-stage');
+  $(name + '-stage').setAttribute('tabindex', '-1');
+  $(name + '-stage').focus?.({preventScroll: true});
   $(name + '-stage').scrollIntoView({
-    behavior: 'smooth',
+    behavior: 'auto',
     block: 'start'
   });
 }
@@ -55,7 +60,12 @@ function selected(kind) {
 }
 // Enable/disable controls during uploads and saves.
 function updateButtons() {
-  const detecting = [...sets.personal, ...sets.aesthetic].some(ref => ref.detecting);
+  const count = selected('personal').length;
+  $('personal-count').textContent = count ? `${count} shade${count === 1 ? '' : 's'} selected` : 'Select shades to get started';
+  const detecting = [...sets.personal, ...sets.aesthetic, ...sets.skin].some(ref => ref.detecting);
+  $('skin-next').disabled = loading || saving || detecting ||
+    !(selected('skin').length || (typeof skinSavedCount !== 'undefined' && skinSavedCount > 0));
+  for (const id of ['skin-skip', 'skin-back', 'skin-clear']) $(id).disabled = saving || loading || detecting;
   $('personal-next').disabled = loading || saving || detecting || !selected('personal').length || sets.personal
     .some(r => !r.shades.length);
   $('aesthetic-next').disabled = loading || saving || detecting || ($('add-aesthetic').value === 'yes' && (!
@@ -67,7 +77,7 @@ function updateButtons() {
 function locked(value) {
   saving = value;
   for (const id of ['user', 'category', 'personal-upload', 'aesthetic-upload', 'environment',
-      'add-aesthetic', 'aesthetic-back'
+      'add-aesthetic', 'aesthetic-back', 'skin-upload'
     ]) $(id).disabled = value;
   document.querySelectorAll('.references input,.references button').forEach(e => e.disabled =
     value || e.dataset.saved === 'true');
@@ -117,7 +127,7 @@ async function detectReferenceShades(ref, kind, button) {
   if (saving || ref.frozen || ref.detecting) return;
   const pageVersion = revision;
   const extractionVersion = ref.extractionVersion = (ref.extractionVersion || 0) + 1;
-  const category = $('category').value;
+  const category = kind === 'skin' ? 'skin_tone' : $('category').value;
   const isCurrent = () => pageVersion === revision && sets[kind].includes(ref) &&
     extractionVersion === ref.extractionVersion && !ref.frozen && !saving;
   ref.detecting = true;
@@ -181,13 +191,14 @@ function showReferenceShades(ref, rgbColors) {
     label.append(input, swatch, text);
     ref.palette.append(label);
   });
-  status(ref.shades.length ? 'Review the checked shades. Nothing is saved until you continue.' :
+  status(ref.shades.length ? (ref.kind === 'skin' ? 'Keep the samples that represent your skin. Save to replace your previous skin samples.' : 'Review the checked shades. Nothing is saved until you continue.') :
     'No opaque shades found. Adjust the crop or remove this image.');
   updateButtons();
 }
 // Build one reference card: image, crop controls, shade checkboxes.
 function renderReference(ref, kind) {
-  const category = $('category').value;
+  ref.kind = kind;
+  const category = kind === 'skin' ? 'skin_tone' : $('category').value;
   const card = document.createElement('article');
   card.className = 'reference';
   ref.card = card;
@@ -259,12 +270,12 @@ function renderReference(ref, kind) {
     start = null;
   };
   const extractButton = document.createElement('button');
-  extractButton.textContent = 'Extract makeup shades';
-  extractButton.setAttribute('aria-label', 'Extract makeup shades from ' + ref.name);
+  extractButton.textContent = kind === 'skin' ? 'Extract skin samples' : 'Extract makeup shades';
+  extractButton.setAttribute('aria-label', extractButton.textContent + ' from ' + ref.name);
   extractButton.onclick = () => extract(ref);
   const detectButton = document.createElement('button');
-  detectButton.textContent = 'Auto-detect ' + category + ' shades';
-  detectButton.disabled = !['lip', 'blush'].includes(category);
+  detectButton.textContent = 'Auto-detect ' + (kind === 'skin' ? 'skin' : category) + ' shades';
+  detectButton.disabled = !['lip', 'blush', 'skin_tone'].includes(category);
   if (detectButton.disabled) detectButton.dataset.saved = 'true';
   detectButton.setAttribute('aria-label', detectButton.textContent + ' for ' + ref.name);
   detectButton.onclick = () => detectReferenceShades(ref, kind, detectButton);
@@ -280,14 +291,15 @@ function renderReference(ref, kind) {
   ref.palette.className = 'palette';
   const hint = document.createElement('p');
   hint.className = 'hint';
-  hint.textContent =
+  hint.textContent = kind === 'skin' ?
+    'Drag over bare skin or adjust the crop sliders, then extract samples.' :
     'Drag over the selected makeup or adjust the crop sliders, then extract shades.';
   const privacy = document.createElement('p');
   privacy.className = 'hint';
   privacy.textContent =
     'Auto-detection sends this resized photo to the app server for processing. Photos are not saved. ' +
     (category === 'blush' ? 'Cheek shades include skin and makeup; review the results.' :
-      'Review the detected lip shades before continuing.');
+      (kind === 'skin' ? 'Review the detected skin samples before saving.' : 'Review the detected lip shades before continuing.'));
   card.append(heading, canvas, hint, controls, detectButton, privacy, extractButton, remove, ref
   .palette);
   $(kind + '-gallery').append(card);
@@ -302,8 +314,8 @@ async function loadFiles(kind, files) {
   const errors = [];
   try {
     for (const file of files) {
-      if (sets[kind].length >= 6) {
-        errors.push('Each set supports up to 6 images.');
+      if (sets[kind].length >= (kind === 'skin' ? 1 : 6)) {
+        errors.push(kind === 'skin' ? 'Remove the current skin photo before adding another.' : 'Each set supports up to 6 images.');
         break;
       }
       if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 10 *
@@ -352,7 +364,7 @@ async function loadFiles(kind, files) {
     updateButtons();
   }
 }
-for (const kind of ['personal', 'aesthetic']) $(kind + '-upload').onchange = e => loadFiles(kind, [
+for (const kind of ['personal', 'aesthetic', 'skin']) $(kind + '-upload').onchange = e => loadFiles(kind, [
   ...e.target.files
 ]);
 // Save confirmed shades, retaining event IDs so retries do not duplicate likes.
@@ -449,15 +461,17 @@ function weightLabel() {
   clearResults();
 }
 $('weight').oninput = weightLabel;
-$('balance-back').onclick = () => stage('cvd');
+$('balance-back').onclick = () => stage('skin');
 // Request catalog recommendations using the selected category and balance.
 async function requestRecommendations() {
   const ticket = ++rankingRequest;
   try {
     $('recommend').disabled = true;
+    status('Finding your closest catalog shades…');
     const data = await api('/api/recommend', {
       user_id: user(),
       category: $('category').value,
+      use_skin_tone: useSkinTone,
       personal_weight: hasAesthetic() ? Number($('weight').value) / 100 : 1,
       ...(hasAesthetic() ? {
         environment_profile_id: confirmedEnvironment
@@ -474,9 +488,10 @@ async function requestRecommendations() {
 };
 // Start a fresh reference session when the user or makeup category changes.
 function resetReferences() {
+  resetSkinTone();
   revision++;
   confirmedEnvironment = null;
-  for (const kind of ['personal', 'aesthetic']) {
+  for (const kind of ['personal', 'aesthetic', 'skin']) {
     sets[kind] = [];
     $(kind + '-gallery').replaceChildren();
     $(kind + '-upload').value = '';
@@ -516,6 +531,7 @@ function renderRecommendations(data) {
     `${Math.round(data.personal_weight*100)}% my taste · ${Math.round(data.environment_weight*100)}% aesthetic inspiration. Scores express similarity-based preferences, not probabilities.`;
   const grid = document.createElement('div');
   grid.className = 'cards';
+  if (data.skin_tone_count) note.textContent += ' Blush scores include your skin-tone color-coherence factor.';
   if (data.cvd) note.textContent += ' ' + data.cvd.message;
   $('results').replaceChildren(note, grid);
   if (!data.results.some(r => r.score !== null && r.score > 0)) {
@@ -541,6 +557,9 @@ function renderRecommendations(data) {
     label.textContent = 'Why this shade';
     reason.textContent =
       `My taste: ${item.personal.reason.join(' ')}${hasAesthetic()?' Aesthetic estimate: '+item.environment.reason.join(' '):''}`;
+    if (item.skin_factor !== null && item.skin_factor !== undefined) {
+      reason.textContent += ` Skin-tone coherence: ${item.skin_factor.toFixed(2)}; preference score before adjustment: ${item.preference_score === null ? 'unknown' : item.preference_score.toFixed(2)}.`;
+    }
     detail.append(label, reason);
     card.append(swatch, title, summary, detail);
     grid.append(card);

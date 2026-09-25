@@ -66,8 +66,10 @@ class PreferenceService:
                 "support_radius": self.support_radius}
 
     def recommend(self, user_id, category, candidate_colors, *, personal_weight=1.0,
-                      environment_profile_id=None, personal_transform=None):
+                      environment_profile_id=None, personal_transform=None, use_skin_tone=True):
         """User-controlled tradeoff; unknown active evidence has no blended score."""
+        if type(use_skin_tone) is not bool:
+            raise ValueError("use_skin_tone must be true or false.")
         if not isinstance(candidate_colors, list) or len(candidate_colors) > 1000:
             raise ValueError("Provide up to 1000 candidates.")
         if (isinstance(personal_weight, bool) or not isinstance(personal_weight, (int, float))
@@ -79,6 +81,8 @@ class PreferenceService:
         environment_events = (self.storage.get_ratings(user_id, category, environment_profile_id)
                               if environment_profile_id is not None else [])
         weight = personal_weight if environment_events else 1.0
+        skin_colors = ([event.color_vector for event in self.storage.get_ratings(user_id, "skin_tone")]
+                       if category == "blush" and use_skin_tone else [])
         # Simulate each personal reference once, without changing saved events.
         if personal_transform is not None and weight > 0:
             personal_events = [replace(event, color_vector=validate_color(
@@ -95,11 +99,19 @@ class PreferenceService:
             known = ((weight == 0 or personal["has_nearby_evidence"])
                      and (weight == 1 or environment["has_nearby_evidence"]))
             score = weight * personal["score"] + (1 - weight) * environment["score"] if known else None
+            preference_score = score
+            skin_factor = min(1.0, max(0.0, coherence(skin_colors + [color]))) if skin_colors else None
+            # Skin coherence can reduce positive support, never improve dislikes
+            # or turn an unknown preference into a supported recommendation.
+            if score is not None and score > 0 and skin_factor is not None:
+                score *= skin_factor
             both = all(e["has_nearby_evidence"] and e["score"] > 0 for e in (personal, environment))
-            results.append({**candidate, "score": score, "personal": personal, "environment": environment,
+            results.append({**candidate, "score": score, "preference_score": preference_score,
+                            "skin_factor": skin_factor, "personal": personal, "environment": environment,
                             "shared_match": both, "status": "scored" if known else "insufficient_evidence"})
         results.sort(key=lambda r: (r["score"] is not None, r["score"] if r["score"] is not None else 0), reverse=True)
         return {"results": results, "personal_weight": weight, "environment_weight": 1 - weight,
+                "skin_tone_count": len(skin_colors),
                 "personal_rating_count": len(personal_events), "environment_rating_count": len(environment_events)}
 
     # Returns top N blush choices

@@ -65,6 +65,20 @@ class SQLiteStorage:
             )
         return event
 
+    def save_skin_tones(self, user_id, colors):
+        """Replace measured samples in their own category; [] clears them."""
+        validate_key(user_id, "user_id")
+        if not isinstance(colors, list) or len(colors) > 12:
+            raise ValueError("Provide up to 12 skin-tone samples.")
+        vectors = list(dict.fromkeys(validate_color(color) for color in colors))
+        timestamp = datetime.now(timezone.utc).isoformat()
+        with self.connection:
+            self.connection.execute("DELETE FROM ratings WHERE user_id=? AND category='skin_tone' AND preference_profile_id='personal'", (user_id,))
+            self.connection.executemany(
+                "INSERT INTO ratings(user_id,category,l,a,b,rating,timestamp,preference_profile_id) VALUES (?, 'skin_tone', ?, ?, ?, 1, ?, 'personal')",
+                [(user_id, *color, timestamp) for color in vectors])
+        return vectors
+
     def get_ratings(self, user_id, category, preference_profile_id="personal"):
         validate_key(user_id, "user_id")
         validate_key(category, "category")

@@ -1,175 +1,147 @@
 # L’Oréal Color Companion
 
-A local Flask app that learns color preferences from makeup reference photos and suggests L’Oréal lip and blush products. It uses SQLite for saved preferences, with optional computer vision for extracting reference shades.
+An accessibility-focused makeup discovery prototype built for a L’Oréal hackathon. Color Companion learns color preferences from makeup reference photos and suggests products from a local catalog of L’Oréal lip and blush shades.
 
-## Guided reference flow
+Users can add a second reference set representing an aesthetic or an audience’s taste, choose how much each set matters, and supply a diagnosed color-vision profile for approximate personal color matching.
 
-Color vision is a separate stage after aesthetic inspiration and before the balance slider. Save the diagnosed type and severity to continue. Details are saved per user, separately from preferences. “Unsure” is disabled for now. Profiles include numeric `severity_level`: mild = 1, moderate = 2, severe = 3. This is an ordinal encoding, not a measured severity or simulation strength. Original labels are retained, and existing profiles get the derived number when read. Supported diagnoses now adjust personal matching using the Machado simulation; aesthetic matching stays in original colors. Presets are 0.33/0.66/1.0; see [INTEGRATION.md](INTEGRATION.md).
+## Features
 
-The site now uses Flask; the core preference model still uses only the standard library. The CV and CVD integration guide is in [INTEGRATION.md](INTEGRATION.md).
+- Guided flow: personal references, optional aesthetic inspiration, color vision, optional skin tone, and recommendations.
+- Manual cropping and shade extraction, with optional automatic lip, cheek, and skin detection.
+- Separate personal and aesthetic preference histories with an adjustable balance.
+- Approximate Machado CVD simulation for supported profiles.
+- Optional skin-tone color-coherence factor for blush.
+- Local SQLite storage, a Flask backend, and a responsive HTML/CSS/JavaScript frontend.
 
-`requirements.txt` installs only Flask and its dependencies for the current site. The pulled face-extractor dependency pins are preserved separately in `requirements-vision.txt`; they are optional and have not been validated in this machine's MSYS2 Python environment. The CV teammate also needs to supply `facetracker/face_landmarker.task` (ignored by Git). The detector now resolves this path relative to its module rather than the terminal's working directory. Automatic lip and blush extraction is now connected. It requires the optional vision setup; `colormath.py` remains experimental, while `cvdsimulator.py` now adjusts personal scoring.
+## Quick start
 
-Frontend code is kept in one readable `onboarding/app.js`, grouped into state/helpers, crop and shade review, reference cards, file loading, saving, navigation, and recommendation rendering. `continuePersonalReferences`, `continueAestheticReferences`, and `requestRecommendations` are the main button handlers. `renderRecommendations` builds the result cards. Shared helpers also support `cvd-form.js`. Run `node tests/test_app.cjs` for lightweight frontend behavior checks, alongside the Python suite and `node tests/test_colors.cjs`.
+Use a standard CPython installation. Python 3.12 has been used to verify the Flask and CVD setup. No frontend build step or npm installation is required.
 
-On a standard Windows Python installation:
+From the repository root:
 
-```powershell
-python -m venv .venv
+### Windows (PowerShell)
+
+~~~powershell
+py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 .\.venv\Scripts\python.exe -m onboarding.server
-```
+~~~
 
-On this machine Python is from MSYS2, so the virtual environment uses `bin` instead of `Scripts`:
+### macOS / Linux
 
-```powershell
-.\.venv\bin\python.exe -m pip install -r requirements.txt
-.\.venv\bin\python.exe -m onboarding.server
-```
+~~~sh
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+python -m onboarding.server
+~~~
 
-Open http://127.0.0.1:8000. Stop with Ctrl+C. Flask's local development server is used, with debugging off.
+Open [http://127.0.0.1:8000](http://127.0.0.1:8000). Stop the server with Ctrl+C. This uses Flask’s local development server.
 
-1. Choose a makeup category, then upload your personal reference set (up to six images at once or added incrementally). Click **Auto-detect lip shades** or **Auto-detect blush shades**, depending on the category. Alternatively, select a region by dragging or using the keyboard crop sliders and manually extract up to three shades. Review the results and uncheck shades you do not want to use. One **Use these shades & continue** action saves all checked shades as likes. No per-shade Like/Dislike loop is required; unchecked shades are ignored, not disliked.
-2. Answer **Would you like to add an aesthetic reference?** Choose No for personal-only suggestions, or Yes to name an influence and upload a second set. Confirm that set in the same way. It represents your estimate of an audience's taste or a chosen aesthetic, not verified feedback from others.
-3. Enter the color vision type and severity from your diagnosis. This is saved separately from taste preferences and selects the approximate simulation used for personal matching.
-4. Choose your balance. With a confirmed second set the slider starts at 60% personal / 40% aesthetic and allows 0–100% in five-point steps. Without a second set it is locked to 100% personal. Click **Suggest my shades**; change the slider and click again to compare results. Back buttons retain this session's reference sets without resaving completed events.
+The base installation supports manual shade extraction and original-color matching.
 
-Photos remain in the browser and disappear on refresh during manual cropping. Auto-detection sends a resized photo to Flask for processing without saving it. Lip mode samples lip landmarks; blush mode samples cheek appearance (skin plus makeup). Results require review before Continue saves likes. Optional vision dependencies and the face model are required; see [INTEGRATION.md](INTEGRATION.md). JPEG/PNG/WebP up to 10 MB and 40 megapixels are accepted. Images are scaled to at most 800 pixels on the long edge; a crop is sampled at up to 160 × 160. A deterministic OKLab histogram chooses frequent separated shades, excluding pixels with alpha below 250. The sRGB conversion follows [the OKLab reference](https://bottosson.github.io/posts/oklab/). Colors are approximate appearances affected by lighting, filters, skin, teeth and reflections.
+### Optional CVD simulation
 
-Selected color ratings are saved in SQLite, not images. Cards are frozen after confirmation begins. Stable event IDs allow retrying a partially saved set without duplicate writes. Each event commits separately; a failed set can have some saved ratings. There is no undo UI. Previous feedback under the same user/profile remains part of the model. Changing user clears the current sets; naming a different aesthetic selects a different history. The weight is a session choice, not persisted.
+Using the same activated environment that runs Flask:
 
-## Optional automatic detection setup
+~~~sh
+python -m pip install -r requirements-cvd.txt
+~~~
 
-The manual site needs only `requirements.txt`. For automatic lip and blush extraction, use the CV teammate’s compatible Python environment and install:
+On Windows, use the environment’s Scripts/python.exe directly if it is not activated. CVD matching needs colour-science and NumPy, but no face model. If pip attempts to compile NumPy under MSYS2, use a separate standard CPython environment.
 
-```powershell
+### Optional automatic detection
+
+~~~sh
 python -m pip install -r requirements-vision.txt
-```
+~~~
 
-Here, `python` must be the interpreter that will run Flask. The vision dependency pins came from the teammate’s branch and have not been validated under this machine’s MSYS2 Python. Obtain the model from the CV teammate and place it at `facetracker/face_landmarker.task`, then restart Flask. The model is ignored by Git and is not included in the repository.
+Provide a compatible MediaPipe Face Landmarker model at **facetracker/face_landmarker.task**, then restart Flask. The model is not included in the repository.
 
-- **Lip:** samples the lip landmarks through the teammate’s extractor.
-- **Blush:** samples the two cheeks. This estimates visible skin plus makeup, not isolated blush pigment.
-- Detection expects one face. No usable result or a setup error leaves manual extraction available and preserves any existing shade review.
-- Clicking detection sends the resized full photo to the app server for processing in memory. It does not save the photo or create preference ratings.
+The vision dependency set and real-photo accuracy require validation in the target environment. Manual cropping remains available when detection is unavailable. See [INTEGRATION.md](INTEGRATION.md) for detector interfaces and setup details.
 
-The frontend and server are connected, and automated tests cover the integration contract and stale-response handling. Actual photo detection still needs validation with the CV dependencies and model installed. See [INTEGRATION.md](INTEGRATION.md) for the RGB output contract and how to replace the detector.
+## Using the app
 
-## Recommendation engine
+1. **Choose a profile ID and makeup category.** Upload up to six personal reference images. Crop the relevant makeup area or use automatic detection, then review the shades. Continuing saves checked shades as likes; unchecked shades are ignored.
+2. **Optionally add aesthetic inspiration.** Name an influence, such as friends or a workplace, and upload another reference set. This represents your estimate of that audience’s taste, not feedback collected from them.
+3. **Enter your diagnosed color-vision type and severity.** Saved details load for the selected profile ID. New profiles have no diagnosis selected. The “Unsure” option is not implemented.
+4. **Optionally add skin samples.** Upload one photo of bare skin in even lighting, extract samples, and review them. These measurements affect blush only. Samples can be reused, replaced, removed, or skipped.
+5. **Set your balance and request suggestions.** With aesthetic references, the slider starts at 60% personal and 40% aesthetic. Without them, it uses 100% personal. After changing the balance, request suggestions again.
 
-There is one public ranking method: `PreferenceService.recommend()`. It scores every supplied product and sorts the results. With no aesthetic references it uses personal preferences only; with an aesthetic profile it combines the two scores using the chosen weight.
+The initial profile ID is **demo-user**. Reusing an ID loads its saved history, including color-vision details. Choose a different ID for a separate person. IDs are local identifiers, not authenticated accounts.
 
-```text
-score = personal_weight * personal_score
-      + (1 - personal_weight) * aesthetic_score
-```
+Supported images: JPEG, PNG, and WebP, up to 10 MB and 40 megapixels per image.
 
-A profile with nonzero weight must have nearby evidence; otherwise the combined score is `null` (Python `None`) and sorts after known results. Missing aesthetic history forces 100% personal. Positive scores on both sides set `shared_match` to true. This is heuristic support, not verified audience approval or a probability.
+## How recommendations work
 
-The website loads products from `catalogs/<category>.json` and displays the top 12. Add products using [catalogs/README.md](catalogs/README.md). Changing category clears current reference images; saved feedback remains separated by category.
+The engine scores every product in the selected catalog and displays the top 12.
 
-## Use from another Python program
+Each reference supports nearby colors in OKLab, a perceptual color space. Candidates are compared with individual references rather than their average: liking black and white does not automatically imply liking gray.
 
-Run from the repository root. The preference engine uses Python's standard library and SQLite; it does not require Flask or CV packages.
+For each preference profile:
 
-```python
-from preference import PreferenceService, SQLiteStorage
+~~~text
+similarity = exp(-0.5 × (distance / bandwidth)²)
+profile score = strongest liked similarity − strongest disliked similarity
+~~~
 
-with SQLiteStorage(":memory:") as storage:
-    service = PreferenceService(storage, bandwidth=0.1)
-    service.add_rating("alice", "lip", [0.7, 0.12, 0.04], 1)
-    service.add_rating("alice", "lip", [0.65, 0.1, 0.03], 1,
-                       preference_profile_id="environment:Friends")
+Similarity is zero outside twice the bandwidth. The default bandwidth is 0.1. The engine supports dislikes, but the current interface collects likes only.
 
-    products = [
-        {"name": "Rose", "color": [0.7, 0.12, 0.04]},
-        {"name": "Soft rose", "color": [0.65, 0.1, 0.03]},
-    ]
-    result = service.recommend(
-        "alice", "lip", products,
-        personal_weight=0.6,
-        environment_profile_id="environment:Friends",
-    )
-    for product in result["results"]:
-        print(product["name"], product["score"])
-```
+Personal and aesthetic scores are combined using the selected weights. A required profile without nearby evidence produces an unknown score, which sorts after supported matches. Scores are heuristic similarities, not probabilities of liking a product.
 
-Use a filename instead of `:memory:` to persist feedback. Repeating `add_rating()` appends events unless you reuse the optional `event_id` for an identical request. A reused ID with different feedback is rejected. The website requires an event ID so network retries cannot duplicate ratings.
+For supported CVD profiles, both personal references and candidate products are simulated before measuring their distance. Aesthetic matching uses original colors. Mild, moderate, and severe map to prototype strengths of **0.33, 0.66, and 1.0**, not calibrated severity measurements. Unsupported profiles or unavailable simulation use original-color matching with an explanation.
 
-Colors must be finite normalized **OKLab** triplets (`L` in 0..1), not RGB or CIELAB. Ratings are `1` for like or `-1` for dislike. The browser currently collects likes only; unchecked shades are ignored. Each history is identified by user, category, and preference profile. `add_rating()` defaults to `personal`; aesthetic ratings use the profile name supplied to `recommend()`.
+For blush, optional skin samples apply a hue/chroma coherence factor to positive preference scores. This is experimental and does not establish cosmetic suitability. Product previews show original catalog colors.
 
-`recommend()` returns a dictionary with `results`, effective weights and rating counts. Each product retains its metadata and gains its combined score, separate personal/environment explanations, and status. For a single color, pass a one-item product list. To read saved events directly, use `storage.get_ratings(user_id, category, preference_profile_id)`.
+## Data and privacy
 
-## How scoring works
+- Preferences, skin samples, and entered diagnosis details are saved locally in **data/preferences.db**.
+- Manual cropping processes photos in the browser. Automatic detection sends a resized photo to the app server for processing in memory; photos are not saved.
+- Refreshing clears uploaded images. Previously confirmed preferences remain saved.
+- Lip and blush histories are separate. Skin samples are stored separately from preferences.
+- Saving new skin samples replaces previous samples. Skipping keeps them stored but excludes them from the current suggestions.
 
-`_score_color()` is the private calculation used for both profiles. It compares one product against every relevant rating:
+The application has no authentication and is intended for local prototype use.
 
-```text
-distance = Euclidean distance in OKLab
-similarity = exp(-0.5 * (distance / bandwidth)^2) if distance < 2 * bandwidth else 0
-score = strongest liked similarity - strongest disliked similarity
-```
+## Product catalogs
 
-An empty side contributes zero. Each reference supports its own local neighborhood; unrelated favorites and duplicate likes do not dilute or amplify a match. Liking black and white does not imply liking gray. Close neighborhoods can overlap, and an unsupported color is unknown rather than disliked.
+Product data lives in **catalogs/**, with one JSON file per category. See [catalogs/README.md](catalogs/README.md) for the format and instructions for adding shades or categories.
 
-The default bandwidth is 0.1 and support ends at distance 0.2. This hard cutoff is a prototype parameter requiring user evaluation, not a perceptual indistinguishability threshold. Explanations show at most one nearest reference per side, its similarity and distance, plus saved event counts. A nearest reference can still be outside the cutoff with zero support. Scores range from -1 to 1; they are not probabilities.
+Catalog colors are estimates. The app does not check live stock, prices, or purchasing availability.
 
-Personal scoring now compares simulated product colors with simulated personal references. Aesthetic scoring compares original colors. `recommend(..., personal_transform=...)` accepts the transform; Flask builds it from the saved diagnosis. Original database colors and product previews remain unchanged. Explanation colors on the personal side are simulated when adjustment is active. Only the closest reference, similarity, distance, timestamp and total event count are retained per side.
+## Project structure
 
-## Run with CVD simulation
+| Path | Purpose |
+| --- | --- |
+| onboarding/server.py | Flask entry point and API routes |
+| onboarding/index.html, style.css | Page structure and responsive styling |
+| onboarding/app.js, colors.js | Reference review, cropping, color conversion, and results |
+| onboarding/cvd-form.js, skin-form.js | Color-vision and skin-tone steps |
+| preference/ | Preference scoring, validation, and SQLite storage |
+| onboarding/vision.py, facetracker/ | Automatic shade extraction |
+| colormatcher/ | CVD simulation and color-coherence helpers |
+| catalogs/ | Product shade data |
+| tests/ | Backend and frontend checks |
 
-On this machine, a separate environment has been prepared and tested:
+The frontend uses rose and ivory surfaces, burgundy actions, serif headings, and native form controls. Fonts are local system fonts; no external font service is required.
 
-```powershell
-.\.venv-cvd\Scripts\python.exe -m onboarding.server
-```
+For API contracts and extension points, see [INTEGRATION.md](INTEGRATION.md). The preference engine can also be used independently through PreferenceService and SQLiteStorage; see [examples/demo.py](examples/demo.py).
 
-Stop any existing server on port 8000 before restarting. This environment supports Flask and CVD simulation; it does not install the face extractor's dependencies or model. The original MSYS2 environment is unchanged.
+## Tests
 
-For another compatible Python environment, install `python -m pip install -r requirements-cvd.txt` and run `python -m onboarding.server` with that interpreter. The simulator uses `colour-science` and NumPy; no face model is needed for CVD matching. Dependency-free core preference use remains available.
+With the project environment activated:
 
-Mild/moderate/severe select **0.33/0.66/1.0** prototype presets. Missing/unsupported profiles, unavailable packages or simulation errors use original-color matching with a visible explanation. Successful results state that personal matching was adjusted. Tritan simulation is especially approximate. Aesthetic-only matching does not transform colors. The cutoff still needs tuning with actual user choices.
-
-## Website API
-
-- `POST /api/rating`: save a rating with `user_id`, `category`, `color`, `rating`, `event_id`, and optional `preference_profile_id`.
-- `POST /api/recommend`: send `user_id`, `category`, optional `personal_weight` and `environment_profile_id`. Products are loaded server-side; client-supplied products are ignored.
-- `GET /api/catalogs`: available categories and product counts.
-- `GET /api/cvd-profile` and `POST /api/cvd-profile`: read/save diagnosis details separately.
-
-Flask calls the service directly. There is no dispatcher or ranking mode selector. The old `/api/rank` endpoint and old scoring/ranking methods have been removed; Python callers should use `recommend()` for custom product lists. The engine accepts up to 1,000 candidates.
-
-## Files to follow
-
-- `onboarding/app.js`: sends save/recommendation requests and displays results.
-- `onboarding/server.py`: Flask routes calling the service.
-- `preference/service.py`: `add_rating()`, `recommend()`, and private `_score_color()`.
-- `preference/storage.py`: SQLite ratings, additive migration, and safe event retries.
-- `preference/models.py`: rating record and input validation.
-- `preference/distance.py`: Euclidean color distance.
-- `onboarding/catalog.py`: loads product JSON.
-- `onboarding/vision.py` and `facetracker/`: extraction wrappers and teammate CV implementation.
-- `onboarding/cvd_profile.py` and `cvd-form.js`: diagnosis storage and form.
-- `colormatcher/cvdsimulator.py`: Machado matrix and personal color transformation.
-- `colormatcher/colormath.py`: experimental combination functions, not connected.
-
-There is no longer an `onboarding/actions.py`. Comparison and profile-snapshot methods were removed because the current app does not need them. Existing comparison tables in old databases are left untouched; new databases do not create them. Existing ratings, CVD profiles and retry records are preserved. No database reset is needed.
-
-## Checks
-
-With your virtual environment active:
-
-```powershell
+~~~sh
 python -m unittest discover -s tests -v
 python -m examples.demo
 node tests/test_app.cjs
 node tests/test_colors.cjs
-```
+~~~
 
-Node is only needed for the frontend checks. Tests cover scoring, profile separation, weights, request validation, retry protection and old-database preservation. They do not establish real-world CV extraction accuracy or preference prediction quality.
+Node.js is needed only for frontend checks. Tests cover scoring, profile separation, request validation, saving and retry behavior, and frontend interactions. They do not establish real-world extraction accuracy or preference prediction quality.
 
-## Limits
+## Limitations
 
-This is a local prototype without authentication. SQLite stores feedback and diagnosis details locally; images are not stored. Product colors are estimated and previews may differ from real products. Ranking compares individual color appearances, not finish, skin suitability, availability, or complete-look compatibility. Photo lighting and skin influence extracted colors. An isolated noisy reference can dominate a match.
+This is a hackathon prototype, not a diagnostic tool or a validated cosmetic suitability assessment. It assumes users already have a diagnosis. CVD simulation, particularly tritan simulation, is approximate.
 
-The old accessibility-score adapter and redundant detection endpoints have been removed. There is one lip/blush endpoint, `/api/detect-shades`, used by both reference sets. CVD severity levels map to prototype strengths rather than calibrated measurements. See [INTEGRATION.md](INTEGRATION.md) for teammate interfaces.
+Photo lighting, filters, skin, and reflections influence extracted shades. Cheek detection samples visible skin plus makeup rather than isolating blush pigment. Matching individual colors does not model finish, wear, or compatibility across an entire makeup look. A weighted compromise does not guarantee that the user or their chosen audience will like the result.
